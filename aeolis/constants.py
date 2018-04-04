@@ -26,15 +26,8 @@ The Netherlands                  The Netherlands
 
 
 #: Aeolis model state variables
-MODEL_STATE = {
+INITIAL_STATE = {
     ('ny', 'nx') : (
-        'x',                                # [m] Real-world x-coordinate of grid cell center
-        'y',                                # [m] Real-world y-coordinate of grid cell center
-        'ds',                               # [m] Real-world grid cell size in x-direction
-        'dn',                               # [m] Real-world grid cell size in y-direction
-        'dsdn',                             # [m^2] Real-world grid cell surface area
-        'dsdni',                            # [m^-2] Inverse of real-world grid cell surface area
-        'alfa',                             # [rad] Real-world grid cell orientation
         'uw',                               # [m/s] Wind velocity
         'uws',                              # [m/s] Component of wind velocity in x-direction
         'uwn',                              # [m/s] Component of wind velocity in y-direction
@@ -44,10 +37,22 @@ MODEL_STATE = {
         'dtaus',                            # [-] Component of the wind shear perturbation in x-direction
         'dtaun',                            # [-] Component of the wind shear perturbation in y-direction
         'udir',                             # [rad] Wind direction
-        'zb',                               # [m] Bed level above reference
         'zs',                               # [m] Water level above reference
         'Hs',                               # [m] Wave height
         'zne',                              # NEW! [m] Non-erodible layer
+    ),
+}
+
+MODEL_STATE = {
+    ('ny', 'nx') : (
+        'x',                                # [m] Real-world x-coordinate of grid cell center
+        'y',                                # [m] Real-world y-coordinate of grid cell center
+        'ds',                               # [m] Real-world grid cell size in x-direction
+        'dn',                               # [m] Real-world grid cell size in y-direction
+        'dsdn',                             # [m^2] Real-world grid cell surface area
+        'dsdni',                            # [m^-2] Inverse of real-world grid cell surface area
+        'alfa',                             # [rad] Real-world grid cell orientation
+        'zb',                               # [m] Bed level above reference
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -167,3 +172,9 @@ DEFAULT_CONFIG = {
 
 #: Required model configuration parameters
 REQUIRED_CONFIG = ['nx', 'ny']
+
+#: Merge initial and model state
+MODEL_STATE.update({
+    (k, MODEL_STATE[k] + INITIAL_STATE[k])
+    for k in set(MODEL_STATE).intersection(INITIAL_STATE)
+})
