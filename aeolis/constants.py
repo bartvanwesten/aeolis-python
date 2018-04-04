@@ -47,6 +47,7 @@ MODEL_STATE = {
         'zb',                               # [m] Bed level above reference
         'zs',                               # [m] Water level above reference
         'Hs',                               # [m] Wave height
+        'zne',                              # NEW! [m] Non-erodible layer
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -87,6 +88,7 @@ DEFAULT_CONFIG = {
     'process_meteo'       : False,              # Enable the process of meteo
     'process_salt'        : False,              # Enable the process of salt
     'process_humidity'    : False,              # Enable the process of humidity
+    'process_avalanche'   : False,              # NEW! Enable the process of avalanching
     'th_grainsize'        : True,               # Enable wind velocity threshold based on grainsize
     'th_bedslope'         : False,              # Enable wind velocity threshold based on bedslope
     'th_moisture'         : True,               # Enable wind velocity threshold based on moisture
@@ -102,6 +104,7 @@ DEFAULT_CONFIG = {
     'meteo_file'          : None,               # Filename of ASCII file with time series of meteorlogical conditions
     'bedcomp_file'        : None,               # Filename of ASCII file with initial bed composition
     'threshold_file'      : None,               # Filename of ASCII file with shear velocity threshold
+    'ne_file'             : None,               # NEW! Filename of ASCII file with non-erodible layer
     'wave_mask'           : None,               # Filename of ASCII file with mask for wave height
     'tide_mask'           : None,               # Filename of ASCII file with mask for tidal elevation
     'threshold_mask'      : None,               # Filename of ASCII file with mask for the shear velocity threshold

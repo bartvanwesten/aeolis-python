@@ -84,6 +84,9 @@ def compute(s, p):
                     
         # apply complex mask
         s['uth'] = apply_mask(s['uth'], s['threshold_mask'])
+        
+    # Non-erodible layer NEW!
+    s = non_erodible(s, p)
 
     return s
 
@@ -320,6 +323,17 @@ def compute_roughness(s, p):
     # modify shear velocity threshold
     s['uth'] *= Rti.reshape((ny,nx,1)).repeat(nf, axis=-1)
     
+    return s
+
+
+def non_erodible(s, p): #NEW!
+    
+    # Define non-erodible layer
+    s['zne'][:,:] = p['ne_file']
+    
+    # Increase velocity threshold infinite
+    s['uth'][(s['zb']<=s['zne'])] = np.inf
+
     return s
 
 

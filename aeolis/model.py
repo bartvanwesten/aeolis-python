@@ -243,6 +243,9 @@ class AeoLiS(IBmi):
         # update bed
         self.s = aeolis.bed.update(self.s, self.p)
 
+        # avalanche NEW!
+        self.s = aeolis.bed.avalanche(self.s, self.p)
+
         # increment time
         self.t += self.dt * self.p['accfac']
         self._count('time')

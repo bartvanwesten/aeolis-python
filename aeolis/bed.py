@@ -200,7 +200,7 @@ def update(s, p):
     # update bathy
     if p['process_bedupdate']:
         s['zb'] += dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
-        s['zs'] += dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
+        s['zs'] += dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity'])) 
 
     return s
 
@@ -404,7 +404,240 @@ def mixtoplayer(s, p):
             
     return s
 
-
+# NEW!
 def avalanche(s, p):
-
+    
+    if p['process_avalanche']:
+    
+        nx = p['nx']+1
+        ny = p['ny']+1
+        
+        ds = s['ds']
+        dn = s['dn']
+        
+        # Calculation of ratio dsdn
+        
+        dsdn = np.repeat(s['dsdn'][:,:,np.newaxis], 8, axis = 2)
+        
+        dsdn_neighbour = np.zeros((ny,nx,8))
+        dsdn_neighbour[1:-1,:-2,0] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[1:-1,2:,1] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[:-2,1:-1,2] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[2:,1:-1,3] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[2:,:-2,4] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[2:,2:,5] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[:-2,2:,6] = dsdn[1:-1,1:-1,0]
+        dsdn_neighbour[:-2,:-2,7] = dsdn[1:-1,1:-1,0]
+        
+        dsdn_fac = np.divide(dsdn, dsdn_neighbour, out=np.zeros_like(dsdn), where = dsdn_neighbour != 0)
+        
+        # Parameters
+        Mcr_stat = 34
+        Mcr_dyn = 33
+        
+        # dh calculation
+        dh_stat =        np.zeros((ny,nx,8))
+        dh_dyn =         np.zeros((ny,nx,8))
+        statdyndiff =    np.zeros((ny,nx,8))
+        
+        dh_stat_x = np.tan(Mcr_stat*(np.pi/180.))*ds
+        dh_stat_y = np.tan(Mcr_stat*(np.pi/180.))*dn
+        dh_stat_xy = np.tan(Mcr_stat*(np.pi/180.))*(ds**2.+dn**2.)**0.5
+        
+        dh_dyn_x = np.tan(Mcr_dyn*(np.pi/180.))*ds
+        dh_dyn_y = np.tan(Mcr_dyn*(np.pi/180.))*dn
+        dh_dyn_xy = np.tan(Mcr_dyn*(np.pi/180.))*(ds**2.+dn**2.)**0.5
+        
+        statdyndiff_x = dh_stat_x - dh_dyn_x
+        statdyndiff_y = dh_stat_y - dh_dyn_y
+        statdyndiff_xy = dh_stat_xy - dh_dyn_xy
+        
+        # Calculations of dh_stat
+        
+        #Negative X-direction
+        dh_stat[:,:-1,0] = dh_stat_x[:,1:]
+        dh_stat[:,-1,0] = 100
+        #Positive X-direction
+        dh_stat[:,1:,1] = dh_stat_x[:,:-1]
+        dh_stat[:,0,1] = 100
+        #Negative Y-direction
+        dh_stat[:-1,:,2] = dh_stat_y[1:,:]
+        dh_stat[-1,:,2] = 100
+        #Positive Y-direction
+        dh_stat[1:,:,3] = dh_stat_y[:-1,:]
+        dh_stat[0,:,3] = 100
+        #XY
+        dh_stat[1:,:-1,4] = dh_stat_xy[:-1,1:]
+        dh_stat[0,:,4] = 100
+        dh_stat[:,-1,4] = 100
+        #XY
+        dh_stat[1:,1:,5] = dh_stat_xy[:-1,:-1]
+        dh_stat[0,:,5] = 100
+        dh_stat[:,0,5] = 100
+        #XY
+        dh_stat[:-1,1:,6] = dh_stat_xy[1:,:-1]
+        dh_stat[-1,:,6] = 100
+        dh_stat[:,0,6] = 100
+        #XY
+        dh_stat[:-1,:-1,7] = dh_stat_xy[1:,1:]
+        dh_stat[-1,:,7] = 100
+        dh_stat[:,-1,7] = 100 
+        
+        # Calculations of dh_dyn
+        
+        #Negative X-direction
+        dh_dyn[:,:-1,0] = dh_dyn_x[:,1:]
+        dh_dyn[:,-1,0] = 100
+        #Positive X-direction
+        dh_dyn[:,1:,1] = dh_dyn_x[:,:-1]
+        dh_dyn[:,0,1] = 100
+        #Negative Y-direction
+        dh_dyn[:-1,:,2] = dh_dyn_y[1:,:]
+        dh_dyn[-1,:,2] = 100
+        #Positive Y-direction
+        dh_dyn[1:,:,3] = dh_dyn_y[:-1,:]
+        dh_dyn[0,:,3] = 100
+        #XY
+        dh_dyn[1:,:-1,4] = dh_dyn_xy[:-1,1:]
+        dh_dyn[0,:,4] = 100
+        dh_dyn[:,-1,4] = 100
+        #XY
+        dh_dyn[1:,1:,5] = dh_dyn_xy[:-1,:-1]
+        dh_dyn[0,:,5] = 100
+        dh_dyn[:,0,5] = 100
+        #XY
+        dh_dyn[:-1,1:,6] = dh_dyn_xy[1:,:-1]
+        dh_dyn[-1,:,6] = 100
+        dh_dyn[:,0,6] = 100
+        #XY
+        dh_dyn[:-1,:-1,7] = dh_dyn_xy[1:,1:]
+        dh_dyn[-1,:,7] = 100
+        dh_dyn[:,-1,7] = 100 
+        
+        # Calculations of statdyndiff
+        statdyndiff[1:-1,:-2,0] = statdyndiff_x[1:-1,1:-1]
+        statdyndiff[1:-1,2:,1] = statdyndiff_x[1:-1,1:-1]
+        statdyndiff[:-2,1:-1,2] = statdyndiff_y[1:-1,1:-1]
+        statdyndiff[2:,1:-1,3] = statdyndiff_y[1:-1,1:-1]
+        statdyndiff[2:,:-2,4] = statdyndiff_xy[1:-1,1:-1]
+        statdyndiff[2:,2:,5] = statdyndiff_xy[1:-1,1:-1]
+        statdyndiff[:-2,2:,6] = statdyndiff_xy[1:-1,1:-1]
+        statdyndiff[:-2,:-2,7] = statdyndiff_xy[1:-1,1:-1]
+        
+        # Reset counters for while-loop
+        ok = 0
+        count=0
+        
+        # Initialize different bathymetries
+        zb = s['zb']
+        #zb0 = s['zb']
+        zb_center = np.zeros((ny,nx,8))
+        zb_neighbour = np.zeros((ny,nx,8))
+        
+        # Volume check
+        #v1=np.sum(zb0[1:-1,1:-1]*dsdn[1:-1,1:-1,0])                                    
+        #v2=np.sum(zb[1:-1,1:-1]*dsdn[1:-1,1:-1,0]) 
+        #print(v1, v2)
+        
+        #print(np.max(zb))
+        
+        # Start of the while-loop
+        
+        #while ok == 0:
+        for i in range(p['max_iter']):
+        
+            # plots     
+                    
+            count+=1
+            
+            #ZB neighbour
+            zb_center = np.repeat(zb[:,:,np.newaxis], 8, axis = 2)
+            #Negative X-direction
+            zb_neighbour[:,:-1,0] = zb[:,1:]
+            zb_neighbour[:,-1,0] = zb_neighbour[:,-2,0]
+            #Positive X-direction
+            zb_neighbour[:,1:,1] = zb[:,:-1]
+            zb_neighbour[:,0,1] = zb_neighbour[:,1,1]
+            #Negative Y-direction
+            zb_neighbour[:-1,:,2] = zb[1:,:]
+            zb_neighbour[-1,:,2] = zb_neighbour[-2,:,2]
+            #Positive Y-direction
+            zb_neighbour[1:,:,3] = zb[:-1,:]
+            zb_neighbour[0,:,3] = zb_neighbour[1,:,3]
+            #XY
+            zb_neighbour[1:,:-1,4] = zb[:-1,1:]
+            zb_neighbour[0,:,4] = zb_neighbour[1,:,4]
+            zb_neighbour[:,-1,4] = zb_neighbour[:,-2,4]
+            #XY
+            zb_neighbour[1:,1:,5] = zb[:-1,:-1]
+            zb_neighbour[0,:,5] = zb_neighbour[1,:,5]
+            zb_neighbour[:,0,5] = zb_neighbour[:,1,5]
+            #XY
+            zb_neighbour[:-1,1:,6] = zb[1:,:-1]
+            zb_neighbour[-1,:,6] = zb_neighbour[-2,:,6]
+            zb_neighbour[:,0,6] = zb_neighbour[:,1,6]
+            #XY
+            zb_neighbour[:-1,:-1,7] = zb[1:,1:]
+            zb_neighbour[-1,:,7] = zb_neighbour[-2,:,7]
+            zb_neighbour[:,-1,7] = zb_neighbour[:,-2,7]    
+            
+            # Reset arrays
+            total   = np.zeros((ny, nx))
+            surplus = np.zeros((ny, nx, 8))
+            flux    = np.zeros((ny, nx, 8))
+            
+            # Calculate the surpluses, filter negative values and add the statdyndiff
+            surplus = (zb_center - zb_neighbour) - dh_stat
+            surplus = surplus.clip(0.)
+            surplus += (surplus>0) * statdyndiff
+            
+            # Sum all the surplusses
+            total = surplus.sum(axis=2)
+            total = np.repeat(total[:,:,np.newaxis], 8, axis = 2)
+            
+            if np.sum(total) == 0:
+                break
+            else:
+                
+#                #Reset arrays
+#                totalflux = np.zeros((ny,nx))
+#                maxsurplus = np.zeros((ny,nx))
+#                maxflux   = np.zeros((ny,nx))
+#                fluxnorm = np.zeros((ny,nx))
+            
+                flux = surplus * np.divide(surplus, total + surplus, out=np.zeros_like(surplus), where = total + surplus != 0)
+                totalflux = flux.sum(axis=2)
+                maxflux = flux.max(axis=2)
+                maxsurplus = surplus.max(axis=2)
+                
+                #Fluxnorm   
+                a1 = maxflux
+                b1 = totalflux
+                c1 = np.divide(a1, b1, out=np.zeros_like(a1), where = b1 != 0)
+                a2 = maxsurplus
+                b2 = 1 + c1
+                c2 = np.divide(a2, b2, out=np.zeros_like(a2), where = b2 != 0)
+                a3 = c2
+                b3 = totalflux
+                fluxnorm = np.divide(a3, b3, out=np.zeros_like(a3), where = b3 != 0)
+                
+                #restribute sediment
+                zb          -= fluxnorm * totalflux# * dsdn_fac
+                zb[:,:-1]   += fluxnorm[:,1:] * flux[:,1:,1] * dsdn_fac[:,1:,1]
+                zb[:,1:]    += fluxnorm[:,:-1] * flux[:,:-1,0] * dsdn_fac[:,:-1,0]
+                zb[:-1,:]   += fluxnorm[1:,:] * flux[1:,:,3] * dsdn_fac[1:,:,3]
+                zb[1:,:]    += fluxnorm[:-1,:] * flux[:-1,:,2] * dsdn_fac[:-1,:,2]
+                zb[1:,:-1]  += fluxnorm[:-1,1:] * flux[:-1,1:,6] * dsdn_fac[:-1,1:,6]
+                zb[1:,1:]   += fluxnorm[:-1,:-1] * flux[:-1,:-1,7] * dsdn_fac[:-1,:-1,7]
+                zb[:-1,1:]  += fluxnorm[1:,:-1] * flux[1:,:-1,4] * dsdn_fac[1:,:-1,4]
+                zb[:-1,:-1] += fluxnorm[1:,1:] * flux[1:,1:,5] * dsdn_fac[1:,1:,5]
+                
+                #Boundary
+                zb[0,:]  = zb[1,:]
+                zb[-1,]  = zb[-2,:]
+                zb[:,0]  = zb[:,1]
+                zb[:,-1] = zb[:,-2]
+        
+        s['zb']=zb
+    
     return s
