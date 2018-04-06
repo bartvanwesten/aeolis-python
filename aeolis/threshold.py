@@ -90,8 +90,11 @@ def compute(s, p):
         s['uth'] = apply_mask(s['uth'], s['threshold_mask'])
         
     # Non-erodible layer NEW!
-    s = non_erodible(s, p)
-
+    if p['ne_file'] is None:
+        s = s # Opposite of None...?
+    else:
+        s = non_erodible(s, p)
+    
     return s
 
 
@@ -336,8 +339,8 @@ def non_erodible(s, p): #NEW!
     s['zne'][:,:] = p['ne_file']
     
     # Increase velocity threshold infinite
-    s['uth'][(s['zb']<=s['zne'])] = np.inf
-
+    s['uth'][s['zb']<s['zne']] = np.inf
+    #[:,:,0]
     return s
 
 

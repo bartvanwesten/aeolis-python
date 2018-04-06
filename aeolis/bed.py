@@ -413,8 +413,8 @@ def avalanche(s, p):
         nx = p['nx']+1
         ny = p['ny']+1
         
-        ds = s['ds']
-        dn = s['dn']
+        x = s['x']
+        y = s['y']
         
         # Calculation of ratio dsdn
         
@@ -432,122 +432,48 @@ def avalanche(s, p):
         
         dsdn_fac = np.divide(dsdn, dsdn_neighbour, out=np.zeros_like(dsdn), where = dsdn_neighbour != 0)
         
-        # Parameters
+        #parameters
         Mcr_stat = 34
         Mcr_dyn = 33
         
-        # dh calculation
-        dh_stat =        np.zeros((ny,nx,8))
-        dh_dyn =         np.zeros((ny,nx,8))
-        statdyndiff =    np.zeros((ny,nx,8))
+        # Calculation of dh
+        dh_stat =        np.zeros((ny,nx,8))+1000 # 1000, because np.inf causes errors later on
+        dh_dyn =         np.zeros((ny,nx,8))+1000
+        #statdyndiff =    np.zeros((NY+1,NX+1,8))+1000
         
-        dh_stat_x = np.tan(Mcr_stat*(np.pi/180.))*ds
-        dh_stat_y = np.tan(Mcr_stat*(np.pi/180.))*dn
-        dh_stat_xy = np.tan(Mcr_stat*(np.pi/180.))*(ds**2.+dn**2.)**0.5
+        # Calculation of dh_stat
+        dh_stat[:,:-1,0] = np.abs(np.tan(Mcr_stat*(np.pi/180.))*(x[:,1:]-x[:,:-1])) #Negative X-direction
+        dh_stat[:,1:,1]  = np.abs(np.tan(Mcr_stat*(np.pi/180.))*(x[:,:-1]-x[:,1:])) #Positive X-direction
+        dh_stat[:-1,:,2] = np.abs(np.tan(Mcr_stat*(np.pi/180.))*(y[1:,:]-y[:-1,:])) #Negative Y-direction
+        dh_stat[1:,:,3]  = np.abs(np.tan(Mcr_stat*(np.pi/180.))*(y[:-1,:]-y[1:,:])) #Positive Y-direction
+        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*((x[1:,1:]-x[1:,:-1])**2.+(y[:-1,:-1]-y[1:,:-1])**2.)**0.5   #Negative X-direction and Positive Y-direction
+        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*((x[1:,:-1]-x[1:,1:])**2.+(y[:-1,1:]-y[1:,1:])**2.)**0.5     #Positive X-direction and Positive Y-direction
+        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*((x[:-1,:-1]-x[:-1,1:])**2.+(y[1:,1:]-y[:-1,1:])**2.)**0.5   #Positive X-direction and Negative Y-direction
+        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*((x[:-1,1:]-x[:-1,:-1])**2.+(y[1:,:-1]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
-        dh_dyn_x = np.tan(Mcr_dyn*(np.pi/180.))*ds
-        dh_dyn_y = np.tan(Mcr_dyn*(np.pi/180.))*dn
-        dh_dyn_xy = np.tan(Mcr_dyn*(np.pi/180.))*(ds**2.+dn**2.)**0.5
+        # Calculation of dh_dyn
+        dh_dyn[:,:-1,0] = np.abs(np.tan(Mcr_dyn*(np.pi/180.))*(x[:,1:]-x[:,:-1])) #Negative X-direction
+        dh_dyn[:,1:,1]  = np.abs(np.tan(Mcr_dyn*(np.pi/180.))*(x[:,:-1]-x[:,1:])) #Positive X-direction
+        dh_dyn[:-1,:,2] = np.abs(np.tan(Mcr_dyn*(np.pi/180.))*(y[1:,:]-y[:-1,:])) #Negative Y-direction
+        dh_dyn[1:,:,3]  = np.abs(np.tan(Mcr_dyn*(np.pi/180.))*(y[:-1,:]-y[1:,:])) #Positive Y-direction
+        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*((x[1:,1:]-x[1:,:-1])**2.+(y[:-1,:-1]-y[1:,:-1])**2.)**0.5   #Negative X-direction and Positive Y-direction
+        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*((x[1:,:-1]-x[1:,1:])**2.+(y[:-1,1:]-y[1:,1:])**2.)**0.5     #Positive X-direction and Positive Y-direction
+        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*((x[:-1,:-1]-x[:-1,1:])**2.+(y[1:,1:]-y[:-1,1:])**2.)**0.5   #Positive X-direction and Negative Y-direction
+        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*((x[:-1,1:]-x[:-1,:-1])**2.+(y[1:,:-1]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
-        statdyndiff_x = dh_stat_x - dh_dyn_x
-        statdyndiff_y = dh_stat_y - dh_dyn_y
-        statdyndiff_xy = dh_stat_xy - dh_dyn_xy
+        # Calculation of statdyndiff
+        statdyndiff = dh_stat - dh_dyn
         
-        # Calculations of dh_stat
-        
-        #Negative X-direction
-        dh_stat[:,:-1,0] = dh_stat_x[:,1:]
-        dh_stat[:,-1,0] = 100
-        #Positive X-direction
-        dh_stat[:,1:,1] = dh_stat_x[:,:-1]
-        dh_stat[:,0,1] = 100
-        #Negative Y-direction
-        dh_stat[:-1,:,2] = dh_stat_y[1:,:]
-        dh_stat[-1,:,2] = 100
-        #Positive Y-direction
-        dh_stat[1:,:,3] = dh_stat_y[:-1,:]
-        dh_stat[0,:,3] = 100
-        #XY
-        dh_stat[1:,:-1,4] = dh_stat_xy[:-1,1:]
-        dh_stat[0,:,4] = 100
-        dh_stat[:,-1,4] = 100
-        #XY
-        dh_stat[1:,1:,5] = dh_stat_xy[:-1,:-1]
-        dh_stat[0,:,5] = 100
-        dh_stat[:,0,5] = 100
-        #XY
-        dh_stat[:-1,1:,6] = dh_stat_xy[1:,:-1]
-        dh_stat[-1,:,6] = 100
-        dh_stat[:,0,6] = 100
-        #XY
-        dh_stat[:-1,:-1,7] = dh_stat_xy[1:,1:]
-        dh_stat[-1,:,7] = 100
-        dh_stat[:,-1,7] = 100 
-        
-        # Calculations of dh_dyn
-        
-        #Negative X-direction
-        dh_dyn[:,:-1,0] = dh_dyn_x[:,1:]
-        dh_dyn[:,-1,0] = 100
-        #Positive X-direction
-        dh_dyn[:,1:,1] = dh_dyn_x[:,:-1]
-        dh_dyn[:,0,1] = 100
-        #Negative Y-direction
-        dh_dyn[:-1,:,2] = dh_dyn_y[1:,:]
-        dh_dyn[-1,:,2] = 100
-        #Positive Y-direction
-        dh_dyn[1:,:,3] = dh_dyn_y[:-1,:]
-        dh_dyn[0,:,3] = 100
-        #XY
-        dh_dyn[1:,:-1,4] = dh_dyn_xy[:-1,1:]
-        dh_dyn[0,:,4] = 100
-        dh_dyn[:,-1,4] = 100
-        #XY
-        dh_dyn[1:,1:,5] = dh_dyn_xy[:-1,:-1]
-        dh_dyn[0,:,5] = 100
-        dh_dyn[:,0,5] = 100
-        #XY
-        dh_dyn[:-1,1:,6] = dh_dyn_xy[1:,:-1]
-        dh_dyn[-1,:,6] = 100
-        dh_dyn[:,0,6] = 100
-        #XY
-        dh_dyn[:-1,:-1,7] = dh_dyn_xy[1:,1:]
-        dh_dyn[-1,:,7] = 100
-        dh_dyn[:,-1,7] = 100 
-        
-        # Calculations of statdyndiff
-        statdyndiff[1:-1,:-2,0] = statdyndiff_x[1:-1,1:-1]
-        statdyndiff[1:-1,2:,1] = statdyndiff_x[1:-1,1:-1]
-        statdyndiff[:-2,1:-1,2] = statdyndiff_y[1:-1,1:-1]
-        statdyndiff[2:,1:-1,3] = statdyndiff_y[1:-1,1:-1]
-        statdyndiff[2:,:-2,4] = statdyndiff_xy[1:-1,1:-1]
-        statdyndiff[2:,2:,5] = statdyndiff_xy[1:-1,1:-1]
-        statdyndiff[:-2,2:,6] = statdyndiff_xy[1:-1,1:-1]
-        statdyndiff[:-2,:-2,7] = statdyndiff_xy[1:-1,1:-1]
-        
-        # Reset counters for while-loop
-        ok = 0
-        count=0
+        # Reset counter for while-loop
+        count=-1
         
         # Initialize different bathymetries
         zb = s['zb']
-        #zb0 = s['zb']
         zb_center = np.zeros((ny,nx,8))
         zb_neighbour = np.zeros((ny,nx,8))
         
-        # Volume check
-        #v1=np.sum(zb0[1:-1,1:-1]*dsdn[1:-1,1:-1,0])                                    
-        #v2=np.sum(zb[1:-1,1:-1]*dsdn[1:-1,1:-1,0]) 
-        #print(v1, v2)
-        
-        #print(np.max(zb))
-        
         # Start of the while-loop
-        
-        #while ok == 0:
         for i in range(p['max_iter']):
-        
-            # plots     
                     
             count+=1
             
@@ -599,12 +525,6 @@ def avalanche(s, p):
             if np.sum(total) == 0:
                 break
             else:
-                
-#                #Reset arrays
-#                totalflux = np.zeros((ny,nx))
-#                maxsurplus = np.zeros((ny,nx))
-#                maxflux   = np.zeros((ny,nx))
-#                fluxnorm = np.zeros((ny,nx))
             
                 flux = surplus * np.divide(surplus, total + surplus, out=np.zeros_like(surplus), where = total + surplus != 0)
                 totalflux = flux.sum(axis=2)

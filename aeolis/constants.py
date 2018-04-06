@@ -47,8 +47,10 @@ MODEL_STATE = {
     ('ny', 'nx') : (
         'x',                                # [m] Real-world x-coordinate of grid cell center
         'y',                                # [m] Real-world y-coordinate of grid cell center
-        'ds',                               # [m] Real-world grid cell size in x-direction
-        'dn',                               # [m] Real-world grid cell size in y-direction
+        'ds',                              # [m] Real-world grid cell size in x-direction
+        'dn',                              # [m] Real-world grid cell size in y-direction
+#        'dsc',                              # [m] Real-world distance between grid cell centers in x-direction
+#        'dnc',                              # [m] Real-world distance between grid cell centers in x-direction
         'dsdn',                             # [m^2] Real-world grid cell surface area
         'dsdni',                            # [m^-2] Inverse of real-world grid cell surface area
         'alfa',                             # [rad] Real-world grid cell orientation
