@@ -105,6 +105,10 @@ def read_configfile(configfile, parse_files=True, load_defaults=True):
     # set default value for h, if not given
     if 'h' in p and not p['h']:
         p['h'] = p['z']
+        
+    # set the number of gridcell corners
+    p['nxc'] = p['nx'] + 1 
+    p['nyc'] = p['ny'] + 1
 
     return p
 

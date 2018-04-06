@@ -949,6 +949,8 @@ class AeoLiS(IBmi):
             shape.append(self.p[dim])
             if dim in ['nx', 'ny']:
                 shape[-1] += 1
+            if dim in ['nxc', 'nyc']:
+                shape[-1] += 1
         return tuple(shape)
     
 

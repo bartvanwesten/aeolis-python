@@ -47,14 +47,20 @@ MODEL_STATE = {
     ('ny', 'nx') : (
         'x',                                # [m] Real-world x-coordinate of grid cell center
         'y',                                # [m] Real-world y-coordinate of grid cell center
-        'ds',                              # [m] Real-world grid cell size in x-direction
-        'dn',                              # [m] Real-world grid cell size in y-direction
-#        'dsc',                              # [m] Real-world distance between grid cell centers in x-direction
-#        'dnc',                              # [m] Real-world distance between grid cell centers in x-direction
+        'ds',                               # [m] Real-world grid cell size in x-direction (distance between corners)
+        'dn',                               # [m] Real-world grid cell size in y-direction (distance between corners)
         'dsdn',                             # [m^2] Real-world grid cell surface area
         'dsdni',                            # [m^-2] Inverse of real-world grid cell surface area
         'alfa',                             # [rad] Real-world grid cell orientation
         'zb',                               # [m] Bed level above reference
+    ),
+    ('nyc','nxc') : (
+        'xc',                               # [m] Real-world x-coordinate of grid cell corner
+        'yc',                               # [m] Real-world y-coordinate of grid cell corner
+        'dsc',                              # [m] Real-world distance between grid cell centers in x-direction
+        'dnc',                              # [m] Real-world distance between grid cell centers in y-direction
+        'dsdnc',                            # [m^2]
+        'dsdnci',                           # [m^-2]
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
