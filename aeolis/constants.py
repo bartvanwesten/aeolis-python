@@ -47,20 +47,44 @@ MODEL_STATE = {
     ('ny', 'nx') : (
         'x',                                # [m] Real-world x-coordinate of grid cell center
         'y',                                # [m] Real-world y-coordinate of grid cell center
-        'ds',                               # [m] Real-world grid cell size in x-direction (distance between corners)
-        'dn',                               # [m] Real-world grid cell size in y-direction (distance between corners)
-        'dsdn',                             # [m^2] Real-world grid cell surface area
-        'dsdni',                            # [m^-2] Inverse of real-world grid cell surface area
-        'alfa',                             # [rad] Real-world grid cell orientation
+        'sz',                               # [m] Real-world x-coordinate of grid cell center
+        'nz',                               # [m] Real-world y-coordinate of grid cell center
+        'dsz',                              # [m] 
+        'dnz',                              # [m] 
+        'dsdnz',                            # [m^2] Real-world grid cell surface area
+        'dsdnzi',                           # [m^-2] Inverse of real-world grid cell surface area
+        'alfaz',                            # [rad] Real-world grid cell orientation
         'zb',                               # [m] Bed level above reference
     ),
-    ('nyc','nxc') : (
-        'xc',                               # [m] Real-world x-coordinate of grid cell corner
-        'yc',                               # [m] Real-world y-coordinate of grid cell corner
-        'dsc',                              # [m] Real-world distance between grid cell centers in x-direction
-        'dnc',                              # [m] Real-world distance between grid cell centers in y-direction
-        'dsdnc',                            # [m^2]
-        'dsdnci',                           # [m^-2]
+    ('ny','nxp') : (
+        'su',                               # [m] 
+        'nu',                               # [m] 
+        'dnu',                              # [m]   
+    ),
+    ('nyp','nx') : (
+        'sv',                               # [m] 
+        'nv',                               # [m] 
+        'dsv',                              # [m] 
+    ),
+    ('nyp','nxp') : (
+        'sc',                               # [m] 
+        'nc',                               # [m] 
+    ),
+    ('ny','nxm') : (
+        'dsu',                              # [m] 
+        'dsdnu',                            # [m^2] 
+        'dsdnui',                           # [m^-2] 
+    ),
+    ('nym','nx') : (   
+        'dnv',                              # [m]
+        'dsdnv',                            # [m^2] 
+        'dsdnvi',                           # [m^-2] 
+    ),
+    ('nyp','nxm') : (
+        'dsc',                              # [m]
+    ),
+    ('nym','nxp') : (
+        'dnc',                              # [m]
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height

@@ -184,6 +184,9 @@ class AeoLiS(IBmi):
         for var, dims in self.dimensions().items():
             self.s[var] = np.zeros(self._dims2shape(dims))
             self.l[var] = self.s[var].copy()
+            
+        # initialize grid parameters
+        self.s = aeolis.gridparams.initialize(self.s, self.p)
 
         # initialize bed composition
         self.s = aeolis.bed.initialize(self.s, self.p)
@@ -554,8 +557,8 @@ class AeoLiS(IBmi):
 
         if self.p['scheme'] == 'euler_forward':
             if self.p['CFL'] > 0.:
-                dtref = np.max(np.abs(self.s['uws']) / self.s['ds']) + \
-                        np.max(np.abs(self.s['uwn']) / self.s['dn'])
+                dtref = np.max(np.abs(self.s['uws']) / self.s['dsz']) + \
+                        np.max(np.abs(self.s['uwn']) / self.s['dnz'])
                 if dtref > 0.:
                     self.dt = np.minimum(self.dt, self.p['CFL'] / dtref)
                 else:
@@ -662,8 +665,8 @@ class AeoLiS(IBmi):
                         dt=self.dt)
 
         # define matrix coefficients to solve linear system of equations
-        Cs = self.dt * s['dn'] * s['dsdni'] * s['uws']
-        Cn = self.dt * s['ds'] * s['dsdni'] * s['uwn']
+        Cs = self.dt * s['dnz'] * s['dsdnzi'] * s['uws']
+        Cn = self.dt * s['dsz'] * s['dsdnzi'] * s['uwn']
         Ti = self.dt / p['T']
 
         beta = abs(beta)
@@ -715,8 +718,8 @@ class AeoLiS(IBmi):
             Ap2[:,0] = 0.
             Ap1[:,0] = -1.
         elif p['boundary_offshore'] == 'gradient':
-            Ap2[:,0] = s['ds'][:,1] / s['ds'][:,2]
-            Ap1[:,0] = -1. - s['ds'][:,1] / s['ds'][:,2]
+            Ap2[:,0] = s['dsz'][:,1] / s['dsz'][:,2]
+            Ap1[:,0] = -1. - s['dsz'][:,1] / s['dsz'][:,2]
         elif p['boundary_offshore'] == 'circular':
             logger.log_and_raise('Cross-shore cricular boundary condition not yet implemented', exc=NotImplementedError)
         else:
@@ -729,8 +732,8 @@ class AeoLiS(IBmi):
             Am2[:,-1] = 0.
             Am1[:,-1] = -1.
         elif p['boundary_onshore'] == 'gradient':
-            Am2[:,-1] = s['ds'][:,-1] / s['ds'][:,-2]
-            Am1[:,-1] = -1. - s['ds'][:,-1] / s['ds'][:,-2]
+            Am2[:,-1] = s['dsz'][:,-1] / s['dsz'][:,-2]
+            Am1[:,-1] = -1. - s['dsz'][:,-1] / s['dsz'][:,-2]
         elif p['boundary_offshore'] == 'circular':
             logger.log_and_raise('Cross-shore cricular boundary condition not yet implemented', exc=NotImplementedError)
         else:
@@ -949,7 +952,9 @@ class AeoLiS(IBmi):
             shape.append(self.p[dim])
             if dim in ['nx', 'ny']:
                 shape[-1] += 1
-            if dim in ['nxc', 'nyc']:
+            if dim in ['nxp', 'nyp']:
+                shape[-1] += 1
+            if dim in ['nxm', 'nym']:
                 shape[-1] += 1
         return tuple(shape)
     

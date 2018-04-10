@@ -52,6 +52,7 @@ class Logger(logging.getLoggerClass()):
 logging.setLoggerClass(Logger)
 
 import aeolis.inout
+import aeolis.gridparams
 import aeolis.model
 import aeolis.wind
 import aeolis.bed

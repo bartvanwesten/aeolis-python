@@ -58,63 +58,9 @@ def initialize(s, p):
 
     '''
     
-    # get model dimensions # Method suitable for non-equidistant grid, not for curvilinear!
-    ny = p['ny']
+    # get model dimensions
     nl = p['nlayers']
     nf = p['nfractions']
-
-    # initialize x-dimension
-    s['x'][:,:] = p['xgrid_file']
-    
-    # initialize distance between cell centers 
-    s['dsc'][:-1,1:-1] = np.diff(s['x'], axis=1)
-    s['dsc'][:-1,0] = s['dsc'][:-1,1]
-    s['dsc'][:-1,-1] = s['dsc'][:-1,-2]
-    s['dsc'][-1,:] = s['dsc'][-2,:]
-    
-    # initialize corners xc
-    s['xc'][1:,:-1] = s['x']+s['dsc'][1:,:-1]*0.5
-    s['xc'][0,:-1] = s['x'][0,:]-s['dsc'][0,:-1]*0.5
-    s['xc'][:,-1] = s['xc'][:,-1]
-    
-    # initialize cell dimensions
-    s['ds'][:,:] = np.diff(s['xc'][:-1,:], axis=1)
-    
-    # initialize y-dimension
-    if ny == 0:
-        s['y'][:,:] = 0.
-        s['dn'][:,:] = 1.
-        s['dnc'][:,:] = 1.
-        s['alfa'][:,:] = 0.
-    else:
-        # initialize y-dimension
-        s['y'][:,:] = p['ygrid_file']
-        
-        # initialize distance between cell centers 
-        s['dnc'][1:-1,:-1] = np.diff(s['y'], axis=0)
-        s['dnc'][0,:-1] = s['dnc'][1,:-1]
-        s['dnc'][-1,:-1] = s['dnc'][-2,:-1]
-        s['dnc'][:,-1] = s['dnc'][:,-2]
-        
-        # initialize corners yc 
-        s['yc'][:-1,1:] = s['y']+s['dnc'][:-1,1:]*0.5
-        s['yc'][:-1,0] = s['y'][:,0]-s['dnc'][:-1,0]*0.5
-        s['yc'][-1,:] = s['yc'][-1,:]
-        
-        # initialize cell dimensions
-        s['dn'][:,:] = np.diff(s['yc'][:,:-1], axis=0)
-
-        s['alfa'][1:-1,:] = np.arctan2(s['x'][2:,:] - s['x'][:-2,:],
-                                       s['y'][2:,:] - s['y'][:-2,:])
-        s['alfa'][0,:] = s['alfa'][1,:]
-        s['alfa'][-1,:] = s['alfa'][-2,:]
-
-    # compute cell areas
-    s['dsdn'][:,:] = s['ds'] * s['dn']
-    s['dsdni'][:,:] = 1. / s['dsdn']
-    
-    s['dsdnc'][:,:] = s['dsc'] * s['dnc']
-    s['dsdnci'][:,:] = 1. / s['dsdnc']
 
     # initialize bathymetry
     s['zb'][:,:] = p['bed_file']
@@ -442,15 +388,12 @@ def avalanche(s, p):
         nx = p['nx']+1
         ny = p['ny']+1
         
-        x = s['x']
-        y = s['y']
-        
-        dsc = s['dsc']
-        dnc = s['dnc']
+        ds = s['dsu']
+        dn = s['dnv']
         
         # Calculation of ratio dsdn
         
-        dsdn = np.repeat(s['dsdn'][:,:,np.newaxis], 8, axis = 2)
+        dsdn = np.repeat(s['dsdnz'][:,:,np.newaxis], 8, axis = 2)
         
         dsdn_neighbour = np.zeros((ny,nx,8))
         dsdn_neighbour[1:-1,:-2,0] = dsdn[1:-1,1:-1,0]
@@ -474,24 +417,24 @@ def avalanche(s, p):
         #statdyndiff =    np.zeros((NY+1,NX+1,8))+1000
         
         # Calculation of dh_stat
-        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*(dsc[:-1,1:-1]) #Negative X-direction
-        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*(dsc[:-1,1:-1]) #Positive X-direction
-        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*(dnc[1:-1,:-1]) #Negative Y-direction
-        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*(dnc[1:-1,:-1]) #Positive Y-direction
-        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
+        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:]) #Negative X-direction
+        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:]) #Positive X-direction
+        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*(dn[:,:]) #Negative Y-direction
+        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*(dn[:,:]) #Positive Y-direction
+        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Positive Y-direction
+        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
+        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
+        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
         # Calculation of dh_stat
-        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*(dsc[:-1,1:-1]) #Negative X-direction
-        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*(dsc[:-1,1:-1]) #Positive X-direction
-        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*(dnc[1:-1,:-1]) #Negative Y-direction
-        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*(dnc[1:-1,:-1]) #Positive Y-direction
-        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*((dsc[1:-1,1:-1])**2.+(dnc[1:-1,1:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
+        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:]) #Negative X-direction
+        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:]) #Positive X-direction
+        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:,:]) #Negative Y-direction
+        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:,:]) #Positive Y-direction
+        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Positive Y-direction
+        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
+        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
+        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
         # Calculation of statdyndiff
         statdyndiff = dh_stat - dh_dyn
@@ -501,6 +444,7 @@ def avalanche(s, p):
         
         # Initialize different bathymetries
         zb = s['zb']
+        zb0 = zb
         zb_center = np.zeros((ny,nx,8))
         zb_neighbour = np.zeros((ny,nx,8))
         
@@ -592,5 +536,9 @@ def avalanche(s, p):
                 zb[:,-1] = zb[:,-2]
         
         s['zb']=zb
+        v0 = np.sum(zb0*s['dsdnz'])
+        v  = np.sum(zb*s['dsdnz'])
+        print('v0=',v0,' v=',v)
+        
     
     return s

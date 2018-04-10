@@ -99,8 +99,8 @@ def interpolate(s, p, t):
         s['udir'][:,:] = np.arctan2(np.interp(t, uw_t, np.sin(uw_d)),
                                     np.interp(t, uw_t, np.cos(uw_d))) * 180. / np.pi
 
-    s['uws'] = s['uw'] * np.cos(s['alfa'] + s['udir'] / 180. * np.pi)
-    s['uwn'] = s['uw'] * np.sin(s['alfa'] + s['udir'] / 180. * np.pi)
+    s['uws'] = s['uw'] * np.cos(s['alfaz'] + s['udir'] / 180. * np.pi)
+    s['uwn'] = s['uw'] * np.sin(s['alfaz'] + s['udir'] / 180. * np.pi)
 
     if p['ny'] == 0:
         s['uwn'][:,:] = 0.

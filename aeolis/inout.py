@@ -106,9 +106,11 @@ def read_configfile(configfile, parse_files=True, load_defaults=True):
     if 'h' in p and not p['h']:
         p['h'] = p['z']
         
-    # set the number of gridcell corners
-    p['nxc'] = p['nx'] + 1 
-    p['nyc'] = p['ny'] + 1
+    # Array size determine
+    p['nxp'] = p['nx'] + 1 
+    p['nyp'] = p['ny'] + 1
+    p['nxm'] = p['nx'] - 1 
+    p['nym'] = p['ny'] - 1
 
     return p
 
