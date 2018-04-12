@@ -29,57 +29,41 @@ import logging
 import numpy as np
 
 # package modules
-from aeolis.utils import *
-
+#from aeolis.utils import *
 
 # initialize logger
 logger = logging.getLogger(__name__)
 
 def initialize(s, p):
 
-    ny = p['ny']
-
     # initialize x-dimensions
     s['x'][:,:] = p['xgrid_file']
     
     # World coordinates of z-points
-    s['sz'][:,:] = s['x'][:,:] # Different from XBeach
+    s['xz'][:,:] = s['x'][:,:]
     
     # World coordinates of u-points
-    s['su'][:,1:-1] = 0.5 * (s['sz'][:,:-1] + s['sz'][:,1:])
-    s['su'][:,0]    = 1.5 *  s['sz'][:,0]   - 0.5 * s['sz'][:,1]
-    s['su'][:,-1]   = 1.5 *  s['sz'][:,-1]  - 0.5 * s['sz'][:,-2]
+    s['xu'][:,1:] = 0.5 * (s['xz'][:,:-1] + s['xz'][:,1:])
+    s['xu'][:,0]  = 1.5 *  s['xz'][:,0] - 0.5 * s['xz'][:,1]
     
     # World coordinates of v-points
-    s['sv'][1:-1,:] = 0.5 * (s['sz'][:-1,:] + s['sz'][1:,:])
-    s['sv'][0,:]    = 1.5 *  s['sz'][0,:]   - 0.5 * s['sz'][1,:]
-    s['sv'][-1,:]   = 1.5 *  s['sz'][-1,:]  - 0.5 * s['sz'][-2,:]
+    s['xv'][1:,:] = 0.5 * (s['xz'][:-1,:] + s['xz'][1:,:])
+    s['xv'][0,:]  = 1.5 *  s['xz'][0,:]   - 0.5 * s['xz'][1,:]
     
     # World coordinates of c-points
-    s['sc'][1:-1,1:-1] = 0.25 *(s['sz'][:-1,:-1] + s['sz'][:-1,1:] + s['sz'][1:,:-1] + s['sz'][1:,1:])
-    s['sc'][1:-1,0]    = 0.5 * (s['su'][:-1,0]  + s['su'][1:,0])
-    s['sc'][1:-1,-1]   = 0.5 * (s['su'][:-1,-1] + s['su'][1:,-1])
-    s['sc'][0,1:-1]    = 0.5 * (s['sv'][0,:-1]  + s['sv'][0,1:])
-    s['sc'][-1,1:-1]   = 0.5 * (s['sv'][-1,:-1] + s['sv'][-1,1:])
-    
-    s['sc'][0,0]   = s['su'][0,0]   # Different from XBeach
-    s['sc'][0,-1]  = s['su'][0,-1]  # Different from XBeach
-    s['sc'][-1,0]  = s['su'][-1,0]  # Different from XBeach
-    s['sc'][-1,-1] = s['su'][-1,-1] # Different from XBeach
-    
-    # Distances
-    s['dsz'][:,:] = ((s['su'][:,:-1]-s['su'][:,1:])**2.+(s['nu'][:,:-1]-s['nu'][:,1:])**2.)**0.5
-    s['dsu'][:,:] = ((s['sz'][:,:-1]-s['sz'][:,1:])**2.+(s['nz'][:,:-1]-s['nz'][:,1:])**2.)**0.5
-    
-    s['dsv'][:,:] = ((s['sc'][:,:-1]-s['sc'][:,1:])**2.+(s['nc'][:,:-1]-s['nc'][:,1:])**2.)**0.5
-    s['dsc'][:,:] = ((s['sv'][:,:-1]-s['sv'][:,1:])**2.+(s['nv'][:,:-1]-s['nv'][:,1:])**2.)**0.5
+    s['xc'][1:,1:] = 0.25 *(s['xz'][:-1,:-1] + s['xz'][:-1,1:] + s['xz'][1:,:-1] + s['xz'][1:,1:])
+    s['xc'][1:,0]  = 0.5 * (s['xu'][:-1,0]   + s['xu'][1:,0])
+    s['xc'][0,1:]  = 0.5 * (s['xv'][0,:-1]   + s['xv'][0,1:])
+    s['xc'][0,0]   = s['xu'][0,0]
     
     # initialize y-dimension
+    ny = p['ny']
+    
     if ny == 0:
         s['y'][:,:] = 0.
-        s['nz'][:,:] = 0.
-        s['nu'][:,:] = 0.
-        s['nv'][:,:] = 0.
+        s['yz'][:,:] = 0.
+        s['yu'][:,:] = 0.
+        s['yv'][:,:] = 0.
         s['dnz'][:,:] = 1.
         s['dnu'][:,:] = 1.
         s['dnv'][:,:] = 1.
@@ -90,40 +74,68 @@ def initialize(s, p):
         s['y'][:,:] = p['ygrid_file']
         
         # World coordinates of z-points
-        s['nz'][:,:] = s['y'][:,:] # Different from XBeach
+        s['yz'][:,:] = s['y'][:,:] # Different from XBeach
         
         # World coordinates of u-points
-        s['nu'][:,1:-1] = 0.5 * (s['nz'][:,:-1] + s['nz'][:,1:])
-        s['nu'][:,0]    = 1.5 *  s['nz'][:,0]   - 0.5 * s['nz'][:,1]
-        s['nu'][:,-1]   = 1.5 *  s['nz'][:,-1]  - 0.5 * s['nz'][:,-2]
+        s['yu'][:,1:] = 0.5 * (s['yz'][:,:-1] + s['yz'][:,1:])
+        s['yu'][:,0]  = 1.5 *  s['yz'][:,0]   - 0.5 * s['yz'][:,1]
         
         # World coordinates of v-points
-        s['nv'][1:-1,:] = 0.5 * (s['nz'][:-1,:] + s['nz'][1:,:])
-        s['nv'][0,:]    = 1.5 *  s['nz'][0,:]   - 0.5 * s['nz'][1,:]
-        s['nv'][-1,:]   = 1.5 *  s['nz'][-1,:]  - 0.5 * s['nz'][-2,:]
+        s['yv'][1:,:] = 0.5 * (s['yz'][:-1,:] + s['yz'][1:,:])
+        s['yv'][0,:]  = 1.5 *  s['yz'][0,:]   - 0.5 * s['yz'][1,:]
         
         # World coordinates of c-points
-        s['nc'][1:-1,1:-1] = 0.25 *(s['nz'][:-1,:-1] + s['nz'][:-1,1:] + s['nz'][1:,:-1] + s['nz'][1:,1:])
-        s['nc'][0,1:-1]    = 0.5 * (s['nv'][0,:-1]  + s['nv'][0,1:])
-        s['nc'][-1,1:-1]   = 0.5 * (s['nv'][-1,:-1] + s['nv'][-1,1:])
-        s['nc'][1:-1,0]    = 0.5 * (s['nu'][:-1,0]  + s['nu'][1:,0])
-        s['nc'][1:-1,-1]   = 0.5 * (s['nu'][:-1,-1] + s['nu'][1:,-1])
+        s['yc'][1:,1:] = 0.25 *(s['yz'][:-1,:-1] + s['yz'][:-1,1:] + s['yz'][1:,:-1] + s['yz'][1:,1:])
+        s['yc'][0,1:]  = 0.5 * (s['yv'][0,:-1]  + s['yv'][0,1:])
+        s['yc'][1:,0]  = 0.5 * (s['yu'][:-1,0]  + s['yu'][1:,0])
+        s['yc'][0,0]   = s['yv'][0,0]
         
-        s['nc'][0,0]   = s['nv'][0,0]   # Different from XBeach
-        s['nc'][0,-1]  = s['nv'][0,-1]  # Different from XBeach
-        s['nc'][-1,0]  = s['nv'][-1,0]  # Different from XBeach
-        s['nc'][-1,-1] = s['nv'][-1,-1] # Different from XBeach
+        # Distances in n-direction
+        s['dnz'][:-1,:] = ((s['yv'][:-1,:]-s['yv'][1:,:])**2.+(s['xv'][:-1,:]-s['xv'][1:,:])**2.)**0.5
+        s['dnu'][1:,:] = ((s['xc'][:-1,:]-s['xc'][1:,:])**2.+(s['yc'][:-1,:]-s['yc'][1:,:])**2.)**0.5
+        s['dnv'][1:,:] = ((s['xz'][:-1,:]-s['xz'][1:,:])**2.+(s['yz'][:-1,:]-s['yz'][1:,:])**2.)**0.5
+        s['dnc'][1:,:] = ((s['xu'][:-1,:]-s['xu'][1:,:])**2.+(s['yu'][:-1,:]-s['yu'][1:,:])**2.)**0.5
         
-        # Distances
-        s['dnz'][:,:] = ((s['nv'][:-1,:]-s['nv'][1:,:])**2.+(s['sv'][:-1,:]-s['sv'][1:,:])**2.)**0.5
-        s['dnu'][:,:] = ((s['sc'][:-1,:]-s['sc'][1:,:])**2.+(s['nc'][:-1,:]-s['nc'][1:,:])**2.)**0.5
-        s['dnv'][:,:] = ((s['sz'][:-1,:]-s['sz'][1:,:])**2.+(s['nz'][:-1,:]-s['nz'][1:,:])**2.)**0.5
-        s['dnc'][:,:] = ((s['su'][:-1,:]-s['su'][1:,:])**2.+(s['nu'][:-1,:]-s['nu'][1:,:])**2.)**0.5
+        s['dnz'][-1,:] = s['dnz'][-2,:] 
+        s['dnu'][0,:] = s['dnu'][1,:]
+        s['dnv'][0,:] = s['dnv'][1,:]
+        s['dnc'][0,:] = s['dnc'][1,:]
+    
+    # Distances in s-direction
+    s['dsz'][:,:-1] = ((s['xu'][:,:-1]-s['xu'][:,1:])**2.+(s['yu'][:,:-1]-s['yu'][:,1:])**2.)**0.5
+    s['dsu'][:,1:] = ((s['xz'][:,:-1]-s['xz'][:,1:])**2.+(s['yz'][:,:-1]-s['yz'][:,1:])**2.)**0.5
+    s['dsv'][:,1:] = ((s['xc'][:,:-1]-s['xc'][:,1:])**2.+(s['yc'][:,:-1]-s['yc'][:,1:])**2.)**0.5
+    s['dsc'][:,1:] = ((s['xv'][:,:-1]-s['xv'][:,1:])**2.+(s['yv'][:,:-1]-s['yv'][:,1:])**2.)**0.5
+    
+    s['dsz'][:,-1] = s['dsz'][:,-2] 
+    s['dsu'][:,0] = s['dsu'][:,1]
+    s['dsv'][:,0] = s['dsv'][:,1]
+    s['dsc'][:,0] = s['dsc'][:,1]
+    
+#    # Distances diagonal in sn-direction (a)
+#    s['dsnca'][1:,1:] = ((s['xz'][:-1,:-1]-s['xz'][1:,1:])**2.+(s['yz'][:-1,:-1]-s['yz'][1:,1:])**2.)**0.5
+#    s['dsnca'][0,:] = s['dsnza'][1,:]
+#    s['dsnca'][:,0] = s['dsnza'][:,1]
+#    s['dsnca'][0,0] = s['dsnza'][1,1]
+#    
+#    # Distances diagonal in sn-direction (a)
+#    s['dsncb'][1:,1:] = ((s['xz'][:-1,:-1]-s['xz'][1:,1:])**2.+(s['yz'][:-1,:-1]-s['yz'][1:,1:])**2.)**0.5
+#    s['dsncb'][0,:] = s['dsnzb'][1,:]
+#    s['dsncb'][:,0] = s['dsnzb'][:,1]
+#    s['dsncb'][0,0] = s['dsnzb'][1,1]
 
     # Cell areas
-    s['dsdnu'][:,:] = (0.5*(s['dsc'][:-1,:]+s['dsc'][1:,:])) * (0.5*(s['dnz'][:,:-1]+s['dnz'][:,1:]))
-    s['dsdnv'][:,:] = (0.5*(s['dsz'][:-1,:]+s['dsz'][1:,:])) * (0.5*(s['dnc'][:,:-1]+s['dnc'][:,1:]))
-    s['dsdnz'][:,:] = (0.5*(s['dsv'][:-1,:]+s['dsv'][1:,:])) * (0.5*(s['dnu'][:,:-1]+s['dnu'][:,1:]))
+    s['dsdnu'][:-1,:-1] = (0.5*(s['dsc'][:-1,:-1]+s['dsc'][1:,:-1])) * (0.5*(s['dnz'][:-1,:-1]+s['dnz'][:-1,1:]))
+    s['dsdnv'][:-1,:-1] = (0.5*(s['dsz'][:-1,:-1]+s['dsz'][1:,:-1])) * (0.5*(s['dnc'][:-1,:-1]+s['dnc'][:-1,1:]))
+    s['dsdnz'][:-1,:-1] = (0.5*(s['dsv'][:-1,:-1]+s['dsv'][1:,:-1])) * (0.5*(s['dnu'][:-1,:-1]+s['dnu'][:-1,1:]))
+    
+    s['dsdnu'][:-1,-1] = s['dsdnu'][:-1,-2]
+    s['dsdnv'][:-1,-1] = s['dsdnv'][:-1,-2]
+    s['dsdnz'][:-1,-1] = s['dsdnz'][:-1,-2]
+    
+    s['dsdnu'][-1,:] = s['dsdnu'][-2,:]
+    s['dsdnv'][-1,:] = s['dsdnv'][-2,:]
+    s['dsdnz'][-1,:] = s['dsdnz'][-2,:]
     
     # Inverse cell areas
     s['dsdnui'][:,:] = 1. / s['dsdnu']
@@ -131,19 +143,30 @@ def initialize(s, p):
     s['dsdnzi'][:,:] = 1. / s['dsdnz']
     
     # Alfaz, grid orientation in z-points
-    s['alfaz'][1:-1,:] = np.arctan2(s['x'][2:,:] - s['x'][:-2,:], s['y'][2:,:] - s['y'][:-2,:])
-    s['alfaz'][0,:] = s['alfaz'][1,:]
+    s['alfaz'][:-1,:] = np.arctan2(s['yu'][1:,:] - s['yu'][:-1,:], s['xu'][1:,:] - s['xu'][:-1,:])
     s['alfaz'][-1,:] = s['alfaz'][-2,:]
     
-    print(s['sz'][:,:])
-    print(s['nz'][:,:])
+    # Alfau, grid orientation in u-points
+    s['alfau'][1:,:] = np.arctan2(s['yz'][1:,:] - s['yz'][:-1,:], s['xz'][1:,:] - s['xz'][:-1,:])
+    s['alfau'][0,:] = s['alfau'][1,:]
+    
+    # Alfav, grid orientation in v-points
+    s['alfav'][:-1,:] = np.arctan2(s['yc'][1:,:] - s['yc'][:-1,:], s['xc'][1:,:] - s['xc'][:-1,:])
+    s['alfav'][-1,:] = s['alfav'][-2,:]
+    
+#    print(np.rad2deg(s['alfaz']))
+#    print(np.rad2deg(s['alfau']))
+#    print(np.rad2deg(s['alfav']))
+    
+#    print(s['sz'][:,:])
+#    print(s['nz'][:,:])
 #    print(s['sv'][:,:])
 #    print(s['sc'][:,:])
 #    print(s['dsz'][:,:])
 #    print(s['dsu'][:,:])
 #    print(s['dsv'][:,:])
 #    print(s['dsc'][:,:])
-    print(s['dsdnz'][:,:])
-    print(s['dsdnu'][:,:])
+#    print(s['dsdnz'][:,:])
+#    print(s['dsdnu'][:,:])
     
     return s

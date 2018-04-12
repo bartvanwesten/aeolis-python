@@ -391,6 +391,10 @@ def avalanche(s, p):
         ds = s['dsu']
         dn = s['dnv']
         
+        x = s['xz']
+        y = s['yz']
+        
+        
         # Calculation of ratio dsdn
         
         dsdn = np.repeat(s['dsdnz'][:,:,np.newaxis], 8, axis = 2)
@@ -408,8 +412,8 @@ def avalanche(s, p):
         dsdn_fac = np.divide(dsdn, dsdn_neighbour, out=np.zeros_like(dsdn), where = dsdn_neighbour != 0)
         
         #parameters
-        Mcr_stat = 34
-        Mcr_dyn = 33
+        Mcr_stat = p['Mcr_stat']
+        Mcr_dyn =  p['Mcr_dyn']
         
         # Calculation of dh
         dh_stat =        np.zeros((ny,nx,8))+1000 # 1000, because np.inf causes errors later on
@@ -417,24 +421,24 @@ def avalanche(s, p):
         #statdyndiff =    np.zeros((NY+1,NX+1,8))+1000
         
         # Calculation of dh_stat
-        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:]) #Negative X-direction
-        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:]) #Positive X-direction
-        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*(dn[:,:]) #Negative Y-direction
-        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*(dn[:,:]) #Positive Y-direction
-        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Negative Y-direction
+        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:-1]) #Negative X-direction
+        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,1:]) #Positive X-direction
+        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*(dn[:-1,:]) #Negative Y-direction
+        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*(dn[1:,:]) #Positive Y-direction
+        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
+        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
+        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
+        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
-        # Calculation of dh_stat
-        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:]) #Negative X-direction
-        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:]) #Positive X-direction
-        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:,:]) #Negative Y-direction
-        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:,:]) #Positive Y-direction
-        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*((ds[1:,:])**2.+(dn[:,1:])**2.)**0.5 #Negative X-direction and Negative Y-direction
+        # Calculation of dh_dyn
+        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:-1]) #Negative X-direction
+        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,1:]) #Positive X-direction
+        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:-1,:]) #Negative Y-direction
+        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*(dn[1:,:]) #Positive Y-direction
+        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
+        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
+        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
+        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
         # Calculation of statdyndiff
         statdyndiff = dh_stat - dh_dyn

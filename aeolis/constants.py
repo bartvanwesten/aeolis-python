@@ -29,8 +29,8 @@ The Netherlands                  The Netherlands
 INITIAL_STATE = {
     ('ny', 'nx') : (
         'uw',                               # [m/s] Wind velocity
-        'uws',                              # [m/s] Component of wind velocity in x-direction
-        'uwn',                              # [m/s] Component of wind velocity in y-direction
+        'uws',                              # [m/s] Component of wind velocity in s-direction
+        'uwn',                              # [m/s] Component of wind velocity in n-direction
         'tau',                              # [m/s] Wind shear velocity
         'taus',                             # [m/s] Component of wind shear velocity in x-direction
         'taun',                             # [m/s] Component of wind shear velocity in y-direction
@@ -47,44 +47,36 @@ MODEL_STATE = {
     ('ny', 'nx') : (
         'x',                                # [m] Real-world x-coordinate of grid cell center
         'y',                                # [m] Real-world y-coordinate of grid cell center
-        'sz',                               # [m] Real-world x-coordinate of grid cell center
-        'nz',                               # [m] Real-world y-coordinate of grid cell center
+        'xz',                               # [m] Real-world x-coordinate of grid cell center
+        'yz',                               # [m] Real-world y-coordinate of grid cell center
         'dsz',                              # [m] 
         'dnz',                              # [m] 
         'dsdnz',                            # [m^2] Real-world grid cell surface area
         'dsdnzi',                           # [m^-2] Inverse of real-world grid cell surface area
-        'alfaz',                            # [rad] Real-world grid cell orientation
+        'alfaz',                            # [rad] Real-world grid cell orientation around z
+        'alfau',                            # [rad] Real-world grid cell orientation around u
+        'alfav',                            # [rad] Real-world grid cell orientation around v
         'zb',                               # [m] Bed level above reference
-    ),
-    ('ny','nxp') : (
-        'su',                               # [m] 
-        'nu',                               # [m] 
+        'xu',                               # [m] 
+        'yu',                               # [m] 
         'dnu',                              # [m]   
-    ),
-    ('nyp','nx') : (
-        'sv',                               # [m] 
-        'nv',                               # [m] 
+        'xv',                               # [m] 
+        'yv',                               # [m] 
         'dsv',                              # [m] 
-    ),
-    ('nyp','nxp') : (
-        'sc',                               # [m] 
-        'nc',                               # [m] 
-    ),
-    ('ny','nxm') : (
+        'xc',                               # [m] 
+        'yc',                               # [m] 
         'dsu',                              # [m] 
         'dsdnu',                            # [m^2] 
         'dsdnui',                           # [m^-2] 
-    ),
-    ('nym','nx') : (   
+#        'dsnca',
+#        'dsncb',
         'dnv',                              # [m]
         'dsdnv',                            # [m^2] 
         'dsdnvi',                           # [m^-2] 
-    ),
-    ('nyp','nxm') : (
         'dsc',                              # [m]
-    ),
-    ('nym','nxp') : (
         'dnc',                              # [m]
+        'uwx',                              # [m/s] Component of wind velocity in x-direction
+        'uwy',                              # [m/s] Component of wind velocity in y-direction
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -188,6 +180,8 @@ DEFAULT_CONFIG = {
     'facDOD'              : .1,                 # [-] Ratio between depth of disturbance and local wave height
     'csalt'               : 35e-3,              # [-] Maximum salt concentration in bed surface layer
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
+    'Mcr_stat'            : 34.,                # [-] NEW!
+    'Mcr_dyn'             : 33.,                # [-] NEW!    
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)
