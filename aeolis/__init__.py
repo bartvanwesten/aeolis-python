@@ -60,3 +60,5 @@ import aeolis.hydro
 import aeolis.threshold
 import aeolis.transport
 import aeolis.netcdf
+import aeolis.shear
+import aeolis.separation

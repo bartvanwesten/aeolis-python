@@ -76,7 +76,7 @@ class WindShear:
     istransect = False
     
     
-    def __init__(self, x, y, z, dx=0.5, dy=0.5,#!!!!!!!!! default set to 100 instead of 1
+    def __init__(self, x, y, z, dx=1., dy=1.,#!!!!!!!!! default set to 100 instead of 1
                  buffer_width=100., buffer_relaxation=None,
                  L=5., z0=.001, l=0.3): #L default 100
         '''Class initialization
@@ -148,26 +148,26 @@ class WindShear:
         u1 = u0/u0*0.76#juiste U(l) invullen
 
 #        print('AA')    
-###        self.populate_computational_grid(udir)
+        self.populate_computational_grid(udir)
 #        print('B')    
         self.compute_shear(u1)
 #        print('C')    
                     
-###        gc = self.cgrid
-###        gi = self.igrid
+        gc = self.cgrid
+        gi = self.igrid
                             
 #        print('D')    
-###        dtaux, dtauy = self.rotate(gc['dtaux'], gc['dtauy'], -udir)#aangepast naar -udir
-#        print('E')
+        dtaux, dtauy = self.rotate(gc['dtaux'], gc['dtauy'], -udir)#aangepast naar -udir
+#        print('E')    
                                 
-###        self.cgrid['dtaux'] = dtaux
-###        self.cgrid['dtauy'] = dtauy
+        self.cgrid['dtaux'] = dtaux
+        self.cgrid['dtauy'] = dtauy
                                         
 #        print('F')    
-###        self.igrid['dtaux'] = self.interpolate(gc['x'], gc['y'], dtaux,
-###                                               gi['x'], gi['y'])
-###        self.igrid['dtauy'] = self.interpolate(gc['x'], gc['y'], dtauy,
-###                                               gi['x'], gi['y'])
+        self.igrid['dtaux'] = self.interpolate(gc['x'], gc['y'], dtaux,
+                                               gi['x'], gi['y'])
+        self.igrid['dtauy'] = self.interpolate(gc['x'], gc['y'], dtauy,
+                                               gi['x'], gi['y'])
 #        print('G')    
         
         return self
@@ -325,22 +325,17 @@ class WindShear:
 
         '''
         kappa = 0.41
-        #adjust for other grid spacings!!!
-        dx=0.1
-        dy=0.1
-###        g = self.cgrid
-        g = self.igrid
+        
+        g = self.cgrid
                 
         if u0 == 0.:
-###            self.cgrid['dtaux'] = np.zeros(g['z'].shape)
-            self.igrid['dtaux'] = np.zeros(g['z'].shape)
-###            self.cgrid['dtauy'] = np.zeros(g['z'].shape)
-            self.igrid['dtauy'] = np.zeros(g['z'].shape)
+            self.cgrid['dtaux'] = np.zeros(g['z'].shape)
+            self.cgrid['dtauy'] = np.zeros(g['z'].shape)
             return
                                 
         ny, nx = g['z'].shape
-        kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx, dx)[:]+0.0000000001,
-                             2. * np.pi * np.fft.fftfreq(ny, dy)[:]+0.0000000001)
+        kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx, g['dx'])[:]+0.0000000001,
+                             2. * np.pi * np.fft.fftfreq(ny, g['dy'])[:]+0.0000000001)
         hs = np.fft.fft2(g['z'])
         hs = self.filter_highfrequenies(kx, ky, hs, nfilter)
 
@@ -389,10 +384,10 @@ class WindShear:
         #dtauy_t = hs * 0.
         
         #Simpler alternative: constant A and B
-        # = 3.6
-        # = 0.25
-        #taux_t = hs * A * (np.absolute(kx) + B*1j*kx)
-        #tauy_t = hs * 0.
+        #A = 3.6
+        #B = 0.25
+        #dtaux_t = hs * A * (np.absolute(kx) + B*1j*kx)
+        #dtauy_t = hs * 0.
 
         #just a test
         #dtaux_t = hs * kx**2 / k * 2 / ul**2 * \
@@ -400,20 +395,10 @@ class WindShear:
 #        dtaux_t = 1000*k
 #       dtaux_t = 0.*hs
 #       dtauy_t = hs * kx * ky / k 
-
-        x0 = 50*0.5
-        x1 = 5*0.5
-        tapering1 = 1. / (1. + np.exp(-(self.igrid['x']-x0) / x1))
-        x0 = 200-50*0.5
-        x1 = 5*0.5
-        tapering2 = 1. / (1. + np.exp(-(x0-self.igrid['x']) / x1))
-        tapering = tapering1*tapering2
         
-###        self.cgrid['dtaux'] = np.real(np.fft.ifft2(dtaux_t))
-        self.igrid['dtaux'] = np.real(np.fft.ifft2(dtaux_t))*tapering
-        #self.igrid['dtaux'] = tapering
-###        self.cgrid['dtauy'] = np.real(np.fft.ifft2(dtauy_t))
-        self.igrid['dtauy'] = np.real(np.fft.ifft2(dtauy_t))*tapering
+        self.cgrid['dtaux'] = np.real(np.fft.ifft2(dtaux_t))
+        self.cgrid['dtauy'] = np.real(np.fft.ifft2(dtauy_t))
+        
         
     def set_computational_grid(self):
         '''Define computational grid
@@ -506,11 +491,10 @@ class WindShear:
             f2 = 1. / (1. + np.exp(-(py + n1 - n2) / s2))
             hs *= f1 * f2
 
-        #simpler alternative: remove high frequencies
-        k_th = 2. * np.pi / self.cgrid['dx'] / 40. #3 gridlengths
-        k_th = 2. * np.pi / self.cgrid['dx'] / 1. 
-        ix = ( ( np.abs(kx) >= k_th ) )
-        hs[ix] = 0.
+#        #simpler alternative: remove high frequencies
+#        k_th = 2. * np.pi / self.cgrid['dx'] / 40. #3 gridlengths
+#        ix = ( ( np.abs(kx) >= k_th ) & ( np.abs(ky) >= k_th ) )
+#        hs[ix] = 0.
 #        print("filter %d" % np.sum(ix))
 
         return hs

@@ -130,7 +130,14 @@ def interpolate(s, p, t):
         s['dtaus'], s['dtaun'] = s['shear'].get_shear()
         s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
         s['tau'] = np.hypot(s['taus'], s['taun'])
-
+        
+        s = aeolis.separation.separation(s, p)
+        
+        s['tau'] *= s['zsepdelta']
+#        s['dtaus'] *= s['zsepbool']
+#        s['dtaun'] *= s['zsepbool']
+#        s['taun'] *= s['zsepbool']
+#        s['taus'] *= s['zsepbool']
     return s
 
 

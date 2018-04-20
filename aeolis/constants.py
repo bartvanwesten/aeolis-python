@@ -68,8 +68,6 @@ MODEL_STATE = {
         'dsu',                              # [m] 
         'dsdnu',                            # [m^2] 
         'dsdnui',                           # [m^-2] 
-#        'dsnca',
-#        'dsncb',
         'dnv',                              # [m]
         'dsdnv',                            # [m^2] 
         'dsdnvi',                           # [m^-2] 
@@ -77,6 +75,8 @@ MODEL_STATE = {
         'dnc',                              # [m]
         'uwx',                              # [m/s] Component of wind velocity in x-direction
         'uwy',                              # [m/s] Component of wind velocity in y-direction
+        'zsep',
+        'zsepdelta',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -181,7 +181,10 @@ DEFAULT_CONFIG = {
     'csalt'               : 35e-3,              # [-] Maximum salt concentration in bed surface layer
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
-    'Mcr_dyn'             : 33.,                # [-] NEW!    
+    'Mcr_dyn'             : 33.,                # [-] NEW! 
+    'M_sep'               : 14.,                # [-] NEW!
+    'M_dSlope'            : 0.25,               # [-] NEW!
+    'm_kCut'              : 2.0,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)

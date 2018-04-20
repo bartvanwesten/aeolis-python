@@ -177,6 +177,10 @@ def update(s, p):
         dz = dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
         s['zb'] += dz
         s['zs'] += dz
+        
+    #TEMP + manual: add sediment to boundary
+    
+#    s['zb'][:,2:3] +=0.01
 
     return s
 
@@ -448,7 +452,7 @@ def avalanche(s, p):
         
         # Initialize different bathymetries
         zb = s['zb']
-        zb0 = zb
+#        zb0 = zb
         zb_center = np.zeros((ny,nx,8))
         zb_neighbour = np.zeros((ny,nx,8))
         
@@ -539,10 +543,10 @@ def avalanche(s, p):
                 zb[:,0]  = zb[:,1]
                 zb[:,-1] = zb[:,-2]
         
-        s['zb']=zb
-        v0 = np.sum(zb0*s['dsdnz'])
-        v  = np.sum(zb*s['dsdnz'])
-        print('v0=',v0,' v=',v)
+#        s['zb']=zb
+#        v0 = np.sum(zb0*s['dsdnz'])
+#        v  = np.sum(zb*s['dsdnz'])
+#        print('v0=',v0,' v=',v)
         
     
     return s
