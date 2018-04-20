@@ -77,9 +77,13 @@ MODEL_STATE = {
         'uwy',                              # [m/s] Component of wind velocity in y-direction
         'zsep',
         'zsepdelta',
-        'ug',                               # [m/s] Grain velocity
-        'ugs',                              # [m/s] Component of grain velocity in x-direction
-        'ugn',                              # [m/s] Component of grain velocity in y-direction
+        'ug',                               # [m/s] Grain velocity NEW!
+        'ugs',                              # [m/s] Component of grain velocity in x-direction NEW!
+        'ugn',                              # [m/s] Component of grain velocity in y-direction NEW!
+        'bubble',                           # TEMP!
+        'stall',                            # TEMP!
+        'zsepnofil',                        # TEMP!
+        'ddz',                              # TEMP!
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -93,9 +97,9 @@ MODEL_STATE = {
         'w_air',                            # [-] Weights of sediment fractions based on grain size distribution in the air
         'w_bed',                            # [-] Weights of sediment fractions based on grain size distribution in the bed
         'uth',                              # [m/s] Shear velocity threshold
-        'uu',                               # [m/s^2] Equilibrium sediment velocity
-        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction
-        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction
+        'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
+        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
+        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
     ),
     ('ny','nx','nlayers') : (
         'thlyr',                            # [m] Bed composition layer thickness
@@ -124,6 +128,7 @@ DEFAULT_CONFIG = {
     'process_salt'        : False,              # Enable the process of salt
     'process_humidity'    : False,              # Enable the process of humidity
     'process_avalanche'   : False,              # NEW! Enable the process of avalanching
+    'process_inertia'     : True,               # NEW!
     'th_grainsize'        : True,               # Enable wind velocity threshold based on grainsize
     'th_bedslope'         : False,              # Enable wind velocity threshold based on bedslope
     'th_moisture'         : True,               # Enable wind velocity threshold based on moisture
@@ -188,7 +193,7 @@ DEFAULT_CONFIG = {
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
     'Mcr_dyn'             : 33.,                # [-] NEW! 
-    'M_sep'               : 14.,                # [-] NEW!
+    'M_sep'               : 14.,                # [-] NEW! separationcrit = double: 30 deg
     'M_dSlope'            : 0.25,               # [-] NEW!
     'm_kCut'              : 2.0,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)

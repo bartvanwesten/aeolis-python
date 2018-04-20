@@ -57,15 +57,22 @@ def separation(s, p):
     
     # Calculate delta for relation separation bubble and shear stress
     
-    m_tau_sepbub = 0.05
-    slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
-    delta = 1./(slope*m_tau_sepbub)
+    # ACCORDING CDM
+#    m_tau_sepbub = 0.05 # WHAT IS THIS?
+#    slope = np.tan(p['Mcr_dyn'])*dx
+#    delta = 1./(slope*m_tau_sepbub)
+    
+    delta = 0.5
+    
+#    print(delta)
     
     # Initialize arrays
 
     dz  = np.zeros((ny, nx))
+    ddz = np.zeros((ny, nx))
     stall = np.zeros((ny, nx))
     bubble = np.zeros((ny, nx)) 
+#    zsepcrit = np.zeros((ny, nx))
     zfft = np.zeros((ny, nx), dtype=np.complex)
     k = np.array(range(0,nx))
     
@@ -74,19 +81,45 @@ def separation(s, p):
     dz[:,:-1] = np.rad2deg(np.arctan((z[:,1:]-z[:,:-1])/dx))
     dz[:,-1] = dz[:,-2]
     
-    # Determine location of separation bubbles
-        
-    stall += np.logical_and(dz < 0, abs(dz) > p['M_sep']) 
-    stall[1:-1,:] += np.logical_and(stall[1:-1,:]==0, stall[:-2,:]>0, stall[2:,:]>0)
-    stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0)
+    ddz[:,:-1] = dz[:,1:]-dz[:,:-1]
+    ddz[:,-1] = ddz[:,-2] 
     
-    bubble[:,:-3] += np.logical_and(stall[:,2:-1]==1, stall[:,1:-2]==0, z[:,2:-1]>z[:,3:])
-    bubble[:,1:-2] = bubble[:,3:]
-    bubble[:,-2:] = 0
+    s['ddz']=ddz
+    
+    # Determine location of separation bubbles
+#    if p['separationcrit'] == 'down':
+    stall += np.logical_and(dz < 0, abs(dz) > p['M_sep'])
+    stall[1:-1,:] += np.logical_and(stall[1:-1,:]==0, stall[:-2,:]>0, stall[2:,:]>0)
+    stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0)  
+    
+#     ddz < 0
+        
+#    else:
+        # IMPLEMENT WARNING
+    
+#    # Trick to let separation bubble start at right position, including dx
+#    
+#    bubble[:,:int(-3./dx)] += np.logical_and(stall[:,2:-1]==1, stall[:,1:-2]==0, z[:,2:-1]>z[:,3:])
+#    bubble[:,1:-2] = bubble[:,3:]
+#    bubble[:,-2:] = 0
+    
+    # In order to reduce the amount of separation bubbles in y-direction to one. JUST TEMP!
+    
+    for j in range(0,ny): 
+        for i in range(0,nx):
+            if (np.sum(stall[j,:i-1])==0. and stall[j,i]==1):
+                bubble[j, i-int(2./dx)] = 1.
+        for i in range(0,nx):
+            if np.sum(bubble[j,:i-1])>0.:
+                bubble[j, i] = 0.
+            
+    s['stall']=stall
+    s['bubble']=bubble
     
     # Walk through all separation bubbles and determine polynoms
     
     for j in range(0,ny):
+        
         for i in range(0,nx):
                 
             if bubble[j,i]==1:
@@ -97,8 +130,12 @@ def separation(s, p):
                 # Zero order polynom
 
                 dhdx = (z[j,i]-z[j,i-2])/(2.*dx)
+                
+                s['zsepnofil'][j,:] = 0.
                     
                 h = poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h)
+                
+                s['zsepnofil'][j,:] = s['zsep'][j,:]
                 
                 # Filter high frequencies
                         
@@ -115,7 +152,10 @@ def separation(s, p):
 
                 h = poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h)
                 
-                #
+#                zsepcrit[j, i:k_max] = s['zsep'][j, i:k_max] - s['zb'][j, i:k_max]
+#                
+#                if np.maximum(zsepcrit[j, i:k_max]) < 2.:
+#                    s['zsep'][j, i:k_max] = 0.
     
     s['zsep'] += zmin
     s['zsepdelta'] = np.minimum(np.maximum(1. - delta * (s['zsep'] - s['zb']),

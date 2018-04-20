@@ -810,12 +810,12 @@ class AeoLiS(IBmi):
                 if Ct_i.min() < 0.:
                     ix = Ct_i < 0.
                     
-                    logger.warning(format_log('Removing negative concentrations',
-                                              nrcells=np.sum(ix),
-                                              fraction=i,
-                                              iteration=n,
-                                              minvalue=Ct_i.min(),
-                                              **logprops))
+#                    logger.warning(format_log('Removing negative concentrations',
+#                                              nrcells=np.sum(ix),
+#                                              fraction=i,
+#                                              iteration=n,
+#                                              minvalue=Ct_i.min(),
+#                                              **logprops))
 
                     Ct_i[~ix] *= 1. + Ct_i[ix].sum() / Ct_i[~ix].sum()
                     Ct_i[ix] = 0.
@@ -876,10 +876,10 @@ class AeoLiS(IBmi):
         ix = 1. - np.sum(w, axis=2) > p['max_error']
         if np.any(ix):
             self._count('supplylim')
-            logger.warning(format_log('Ran out of sediment',
-                                      nrcells=np.sum(ix),
-                                      minweight=np.sum(w, axis=-1).min(),
-                                      **logprops))
+#            logger.warning(format_log('Ran out of sediment',
+#                                      nrcells=np.sum(ix),
+#                                      minweight=np.sum(w, axis=-1).min(),
+#                                      **logprops))
 
         qs = Ct * s['uws'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
         qn = Ct * s['uwn'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
@@ -929,7 +929,7 @@ class AeoLiS(IBmi):
 
         '''
 
-        print("%g" % self.t)
+#        print("%g" % self.t)
         
         l = self.l
         s = self.s
@@ -1007,17 +1007,17 @@ class AeoLiS(IBmi):
         Amx = np.zeros(s['uw'].shape)
         Am1 = np.zeros(s['uw'].shape)
 
-        # populate matrix diagonals
-        A0         += s['dsdn'] / self.dt                                        #time derivative
-        A0         += s['dsdn'] / p['T']                                 * alpha #source term
-        A0[:,1:]   -= s['dn'][:,1:]  * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #lower x-face
-        Am1[:,1:]  -= s['dn'][:,1:]  * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #lower x-face
-        A0[:,:-1]  += s['dn'][:,:-1] * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #upper x-face
-        Ap1[:,:-1] += s['dn'][:,:-1] * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #upper x-face
-        A0[1:,:]   -= s['ds'][1:,:]  * ufn[1:-1,:] * (1. - ixfn[1:-1,:]) * alpha #lower y-face
-        Amx[1:,:]  -= s['ds'][1:,:]  * ufn[1:-1,:] *       ixfn[1:-1,:]  * alpha #lower y-face
-        A0[:-1,:]  += s['ds'][:-1,:] * ufn[1:-1,:] *       ixfn[1:-1,:]  * alpha #upper y-face
-        Apx[:-1,:] += s['ds'][:-1,:] * ufn[1:-1,:] * (1. - ixfn[1:-1,:]) * alpha #upper y-face
+        # populate matrix diagonals #ADJUSTED TO NEW GRIDPARAMS, CHECK IF CORRECT (BART)!
+        A0         += s['dsdnz'] / self.dt                                        #time derivative
+        A0         += s['dsdnz'] / p['T']                                 * alpha #source term
+        A0[:,1:]   -= s['dnz'][:,1:]  * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #lower x-face
+        Am1[:,1:]  -= s['dnz'][:,1:]  * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #lower x-face
+        A0[:,:-1]  += s['dnz'][:,:-1] * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #upper x-face
+        Ap1[:,:-1] += s['dnz'][:,:-1] * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #upper x-face
+        A0[1:,:]   -= s['dsz'][1:,:]  * ufn[1:-1,:] * (1. - ixfn[1:-1,:]) * alpha #lower y-face
+        Amx[1:,:]  -= s['dsz'][1:,:]  * ufn[1:-1,:] *       ixfn[1:-1,:]  * alpha #lower y-face
+        A0[:-1,:]  += s['dsz'][:-1,:] * ufn[1:-1,:] *       ixfn[1:-1,:]  * alpha #upper y-face
+        Apx[:-1,:] += s['dsz'][:-1,:] * ufn[1:-1,:] * (1. - ixfn[1:-1,:]) * alpha #upper y-face
         
         # add boundaries
         # offshore boundary (i=0)
@@ -1036,8 +1036,8 @@ class AeoLiS(IBmi):
             Am1[:,0] = 0.
         elif p['boundary_offshore'] == 'gradient':
             #remove the flux at the inner face of the cell
-            A0[:,0]  -= s['dn'][:,0] * ufs[:,1] *       ixfs[:,1]  * alpha #upper x-face
-            Ap1[:,0] -= s['dn'][:,0] * ufs[:,1] * (1. - ixfs[:,1]) * alpha #upper x-face
+            A0[:,0]  -= s['dnz'][:,0] * ufs[:,1] *       ixfs[:,1]  * alpha #upper x-face
+            Ap1[:,0] -= s['dnz'][:,0] * ufs[:,1] * (1. - ixfs[:,1]) * alpha #upper x-face
         elif p['boundary_offshore'] == 'circular':
             raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
         else:
@@ -1059,8 +1059,8 @@ class AeoLiS(IBmi):
             Am1[:,-1] = 0.
         elif p['boundary_onshore'] == 'gradient':
             #remove the flux at the inner face of the cell
-            A0[:,-1]   += s['dn'][:,-1]  * ufs[:,-2]   * (1. - ixfs[:,-2]) * alpha #lower x-face
-            Am1[:,-1]  += s['dn'][:,-1]  * ufs[:,-2]   *       ixfs[:,-2]  * alpha #lower x-face
+            A0[:,-1]   += s['dnz'][:,-1]  * ufs[:,-2]   * (1. - ixfs[:,-2]) * alpha #lower x-face
+            Am1[:,-1]  += s['dnz'][:,-1]  * ufs[:,-2]   *       ixfs[:,-2]  * alpha #lower x-face
         elif p['boundary_onshore'] == 'circular':
             raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
         else:
@@ -1087,15 +1087,15 @@ class AeoLiS(IBmi):
             Am1[-1,:] = 0.
         elif p['boundary_lateral'] == 'gradient':
             #remove the flux at the inner face of the cell
-            A0[0,:]   -= s['ds'][0,:] * ufn[1,:]   *       ixfn[1,:]   * alpha #upper y-face
-            Apx[0,:]  -= s['ds'][0,:] * ufn[1,:]   * (1. - ixfn[1,:])  * alpha #upper y-face
-            A0[-1,:]  += s['ds'][-1,:] * ufn[-2,:] * (1. - ixfn[-2,:]) * alpha #lower y-face
-            Amx[-1,:] += s['ds'][-1,:] * ufn[-2,:] *       ixfn[-2,:]  * alpha #lower y-face
+            A0[0,:]   -= s['dsz'][0,:] * ufn[1,:]   *       ixfn[1,:]   * alpha #upper y-face
+            Apx[0,:]  -= s['dsz'][0,:] * ufn[1,:]   * (1. - ixfn[1,:])  * alpha #upper y-face
+            A0[-1,:]  += s['dsz'][-1,:] * ufn[-2,:] * (1. - ixfn[-2,:]) * alpha #lower y-face
+            Amx[-1,:] += s['dsz'][-1,:] * ufn[-2,:] *       ixfn[-2,:]  * alpha #lower y-face
         elif p['boundary_lateral'] == 'circular':
-            A0[0,:]   -= s['ds'][0,:]  * ufn[0,:]  * (1. - ixfn[0,:])  * alpha #lower y-face
-            Amx[0,:]  -= s['ds'][0,:]  * ufn[0,:]  *       ixfn[0,:]   * alpha #lower y-face
-            A0[-1,:]  += s['ds'][-1,:] * ufn[-1,:] *       ixfn[-1,:]  * alpha #upper y-face
-            Apx[-1,:] += s['ds'][-1,:] * ufn[-1,:] * (1. - ixfn[-1,:]) * alpha #upper y-face
+            A0[0,:]   -= s['dsz'][0,:]  * ufn[0,:]  * (1. - ixfn[0,:])  * alpha #lower y-face
+            Amx[0,:]  -= s['dsz'][0,:]  * ufn[0,:]  *       ixfn[0,:]   * alpha #lower y-face
+            A0[-1,:]  += s['dsz'][-1,:] * ufn[-1,:] *       ixfn[-1,:]  * alpha #upper y-face
+            Apx[-1,:] += s['dsz'][-1,:] * ufn[-1,:] * (1. - ixfn[-1,:]) * alpha #upper y-face
         else:
             raise ValueError('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'])
 
@@ -1132,7 +1132,7 @@ class AeoLiS(IBmi):
             # does not violate the availability of sediment in the bed
             for n in range(p['max_iter']):
                 self._count('matrixsolve')
-                print("iteration nr = %d" % n)
+#                print("iteration nr = %d" % n)
                 # define upwind face value
                 # sediment concentration
                 Ctxfs_i = np.zeros(ufs.shape)
@@ -1188,10 +1188,10 @@ class AeoLiS(IBmi):
                         qnxfn_i[-1,:] = qnxfn_i[0,:]                   
                         
                 # calculate pickup
-                D_i = s['dsdn'] / p['T'] * ( alpha * Ct[:,:,i]  \
+                D_i = s['dsdnz'] / p['T'] * ( alpha * Ct[:,:,i]  \
                                             + (1. - alpha ) * l['Ct'][:,:,i] )
-                A_i = s['dsdn'] / p['T'] * s['mass'][:,:,0,i] + D_i # Availability
-                U_i = s['dsdn'] / p['T'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
+                A_i = s['dsdnz'] / p['T'] * s['mass'][:,:,0,i] + D_i # Availability
+                U_i = s['dsdnz'] / p['T'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
                                             + (1. - alpha ) * l['w'][:,:,i] * l['Cu'][:,:,i] )
                 #deficit_i = E_i - A_i
                 E_i= np.minimum(U_i, A_i)
@@ -1200,43 +1200,43 @@ class AeoLiS(IBmi):
                 # create the right hand side of the linear system
                 # sediment concentration
                 yCt_i = np.zeros(s['uw'].shape)
-                yCt_i         -= s['dsdn'] / self.dt * ( Ct[:,:,i] \
+                yCt_i         -= s['dsdnz'] / self.dt * ( Ct[:,:,i] \
                                                         - l['Ct'][:,:,i] )      #time derivative
                 yCt_i         += E_i - D_i                                      #source term
-                yCt_i[:,1:]   += s['dn'][:,1:]  * ufs[:,1:-1] * Ctxfs_i[:,1:-1] #lower x-face
-                yCt_i[:,:-1]  -= s['dn'][:,:-1] * ufs[:,1:-1] * Ctxfs_i[:,1:-1] #upper x-face
-                yCt_i[1:,:]   += s['ds'][1:,:]  * ufn[1:-1,:] * Ctxfn_i[1:-1,:] #lower y-face
-                yCt_i[:-1,:]  -= s['ds'][:-1,:] * ufn[1:-1,:] * Ctxfn_i[1:-1,:] #upper y-face
+                yCt_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * Ctxfs_i[:,1:-1] #lower x-face
+                yCt_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * Ctxfs_i[:,1:-1] #upper x-face
+                yCt_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * Ctxfn_i[1:-1,:] #lower y-face
+                yCt_i[:-1,:]  -= s['dsz'][:-1,:] * ufn[1:-1,:] * Ctxfn_i[1:-1,:] #upper y-face
                 if qflag :
                     #sediment flux in x-direction
                     yqs_i = np.zeros(s['uw'].shape)
-                    yqs_i         -= s['dsdn'] / self.dt * ( qs[:,:,i] \
+                    yqs_i         -= s['dsdnz'] / self.dt * ( qs[:,:,i] \
                                                             - l['qs'][:,:,i] )      #time derivative
                     yqs_i         += s['uus'][:,:,i] * E_i - ugs[:,:,i] * D_i       #source term
-                    yqs_i[:,1:]   += s['dn'][:,1:]  * ufs[:,1:-1] * qsxfs_i[:,1:-1] #lower x-face
-                    yqs_i[:,:-1]  -= s['dn'][:,:-1] * ufs[:,1:-1] * qsxfs_i[:,1:-1] #upper x-face
-                    yqs_i[1:,:]   += s['ds'][1:,:]  * ufn[1:-1,:] * qsxfn_i[1:-1,:] #lower y-face
-                    yqs_i[:-1,:]  -= s['ds'][:-1,:] * ufn[1:-1,:] * qsxfn_i[1:-1,:] #upper y-face
+                    yqs_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * qsxfs_i[:,1:-1] #lower x-face
+                    yqs_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * qsxfs_i[:,1:-1] #upper x-face
+                    yqs_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * qsxfn_i[1:-1,:] #lower y-face
+                    yqs_i[:-1,:]  -= s['dsz'][:-1,:] * ufn[1:-1,:] * qsxfn_i[1:-1,:] #upper y-face
                     #sediment flux in y-direction
                     yqn_i = np.zeros(s['uw'].shape)
-                    yqn_i         -= s['dsdn'] / self.dt * ( qn[:,:,i] \
+                    yqn_i         -= s['dsdnz'] / self.dt * ( qn[:,:,i] \
                                                             - l['qn'][:,:,i] )      #time derivative
                     yqn_i         += s['uun'][:,:,i] * E_i - ugn[:,:,i] * D_i       #source term
-                    yqn_i[:,1:]   += s['dn'][:,1:]  * ufs[:,1:-1] * qnxfs_i[:,1:-1] #lower x-face
-                    yqn_i[:,:-1]  -= s['dn'][:,:-1] * ufs[:,1:-1] * qnxfs_i[:,1:-1] #upper x-face
-                    yqn_i[1:,:]   += s['ds'][1:,:]  * ufn[1:-1,:] * qnxfn_i[1:-1,:] #lower y-face
-                    yqn_i[:-1,:]  -= s['ds'][:-1,:] * ufn[1:-1,:] * qnxfn_i[1:-1,:] #upper y-face
+                    yqn_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * qnxfs_i[:,1:-1] #lower x-face
+                    yqn_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * qnxfs_i[:,1:-1] #upper x-face
+                    yqn_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * qnxfn_i[1:-1,:] #lower y-face
+                    yqn_i[:-1,:]  -= s['dsz'][:-1,:] * ufn[1:-1,:] * qnxfn_i[1:-1,:] #upper y-face
                     
                 # boundary conditions
                 # offshore boundary (i=0)
                 if p['boundary_offshore'] == 'noflux':
                     pass
                 elif p['boundary_offshore'] == 'saturatedflux':
-                    yCt_i[:,0]   += s['dn'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] #lower x-face
+                    yCt_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] #lower x-face
                     if qflag :
-                        yqs_i[:,0]   += s['dn'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
+                        yqs_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
                                          * s['uus'][:,0,i]
-                        yqn_i[:,0]   += s['dn'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
+                        yqn_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
                                          * s['uun'][:,0,i]
                 elif p['boundary_offshore'] == 'constant':
                     #constant sediment concentration (Ct) in the air (for now = 0)
@@ -1246,10 +1246,10 @@ class AeoLiS(IBmi):
                         yqn_i[:,0]   = 0.
                 elif p['boundary_offshore'] == 'gradient':
                     #remove the flux at the inner face of the cell
-                    yCt_i[:,0]  += s['dn'][:,1] * ufs[:,1] * Ctxfs_i[:,1] #upper x-face
+                    yCt_i[:,0]  += s['dnz'][:,1] * ufs[:,1] * Ctxfs_i[:,1] #upper x-face
                     if qflag :
-                        yqs_i[:,0]  += s['dn'][:,1] * ufs[:,1] * qsxfs_i[:,1]
-                        yqn_i[:,0]  += s['dn'][:,1] * ufs[:,1] * qnxfs_i[:,1]
+                        yqs_i[:,0]  += s['dnz'][:,1] * ufs[:,1] * qsxfs_i[:,1]
+                        yqn_i[:,0]  += s['dnz'][:,1] * ufs[:,1] * qnxfs_i[:,1]
                 elif p['boundary_offshore'] == 'circular':
                     raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
                 else:
@@ -1258,11 +1258,11 @@ class AeoLiS(IBmi):
                 if p['boundary_onshore'] == 'noflux':
                     pass
                 elif p['boundary_onshore'] == 'saturatedflux':
-                    yCt_i[:,-1]   += s['dn'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] #upper x-face
+                    yCt_i[:,-1]   += s['dnz'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] #upper x-face
                     if qflag :
-                        yqs_i[:,-1]   += s['dn'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
+                        yqs_i[:,-1]   += s['dnz'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
                                          * s['uus'][:,-1,i]
-                        yqn_i[:,-1]   += s['dn'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
+                        yqn_i[:,-1]   += s['dnz'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
                                          * s['uun'][:,-1,i]
                 elif p['boundary_onshore'] == 'constant':
                     #constant sediment concentration (Ct) in the air (for now = 0)
@@ -1272,10 +1272,10 @@ class AeoLiS(IBmi):
                         yqn_i[:,-1]   = 0.
                 elif p['boundary_onshore'] == 'gradient':
                     #remove the flux at the inner face of the cell
-                    yCt_i[:,-1]  -= s['dn'][:,-1] * ufs[:,-2] * Ctxfs_i[:,-2] #lower x-face
+                    yCt_i[:,-1]  -= s['dnz'][:,-1] * ufs[:,-2] * Ctxfs_i[:,-2] #lower x-face
                     if qflag :
-                        yqs_i[:,-1]  -= s['dn'][:,-1] * ufs[:,-2] * qsxfs_i[:,-2]
-                        yqn_i[:,-1]  -= s['dn'][:,-1] * ufs[:,-2] * qnxfs_i[:,-2]
+                        yqs_i[:,-1]  -= s['dnz'][:,-1] * ufs[:,-2] * qsxfs_i[:,-2]
+                        yqn_i[:,-1]  -= s['dnz'][:,-1] * ufs[:,-2] * qnxfs_i[:,-2]
                 elif p['boundary_onshore'] == 'circular':
                     raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
                 else:
@@ -1285,17 +1285,17 @@ class AeoLiS(IBmi):
                     #nothing to be done
                     pass
                 elif p['boundary_lateral'] == 'saturatedflux':
-                    yCt_i[:,0]   += s['ds'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  #lower y-face
+                    yCt_i[:,0]   += s['dsz'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  #lower y-face
                     if qflag :
-                        yqs_i[:,0]   += s['ds'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
+                        yqs_i[:,0]   += s['dsz'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
                                          * s['uus'][0,:,i]
-                        yqn_i[:,0]   += s['ds'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
+                        yqn_i[:,0]   += s['dsz'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
                                          * s['uun'][0,:,i]
-                    yCt_i[:,-1]  -= s['ds'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] #upper y-face
+                    yCt_i[:,-1]  -= s['dsz'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] #upper y-face
                     if qflag :
-                        yqs_i[:,-1]  -= s['ds'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
+                        yqs_i[:,-1]  -= s['dsz'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
                                          * s['uus'][-1,:,i]
-                        yqn_i[:,-1]  -= s['ds'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
+                        yqn_i[:,-1]  -= s['dsz'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
                                          * s['uun'][-1,:,i]
                 elif p['boundary_lateral'] == 'constant':
                     #constant sediment concentration (hC) in the air
@@ -1303,23 +1303,23 @@ class AeoLiS(IBmi):
                     yCt_i[-1,:] = 0.
                 elif p['boundary_lateral'] == 'gradient':
                     #remove the flux at the inner face of the cell
-                    yCt_i[-1,:] -= s['ds'][-1,:] * ufn[-2,:] * Ctxfn_i[-2,:] #lower y-face
+                    yCt_i[-1,:] -= s['dsz'][-1,:] * ufn[-2,:] * Ctxfn_i[-2,:] #lower y-face
                     if qflag :
-                        yqs_i[-1,:] -= s['ds'][-1,:] * ufn[-2,:] * qsxfn_i[-2,:]
-                        yqn_i[-1,:] -= s['ds'][-1,:] * ufn[-2,:] * qnxfn_i[-2,:]
-                    yCt_i[0,:]  += s['ds'][1,:]  * ufn[1,:]  * Ctxfn_i[1,:]  #upper y-face
+                        yqs_i[-1,:] -= s['dsz'][-1,:] * ufn[-2,:] * qsxfn_i[-2,:]
+                        yqn_i[-1,:] -= s['dsz'][-1,:] * ufn[-2,:] * qnxfn_i[-2,:]
+                    yCt_i[0,:]  += s['dsz'][1,:]  * ufn[1,:]  * Ctxfn_i[1,:]  #upper y-face
                     if qflag :
-                        yqs_i[0,:]  += s['ds'][1,:]  * ufn[1,:]  * qsxfn_i[1,:]
-                        yqn_i[0,:]  += s['ds'][1,:]  * ufn[1,:]  * qnxfn_i[1,:]
+                        yqs_i[0,:]  += s['dsz'][1,:]  * ufn[1,:]  * qsxfn_i[1,:]
+                        yqn_i[0,:]  += s['dsz'][1,:]  * ufn[1,:]  * qnxfn_i[1,:]
                 elif p['boundary_lateral'] == 'circular':
-                    yCt_i[0,:]  += s['ds'][0,:]  * ufn[0,:]  * Ctxfn_i[0,:]  #lower y-face
+                    yCt_i[0,:]  += s['dsz'][0,:]  * ufn[0,:]  * Ctxfn_i[0,:]  #lower y-face
                     if qflag :
-                        yqs_i[0,:]  += s['ds'][0,:]  * ufn[0,:]  * qsxfn_i[0,:]
-                        yqn_i[0,:]  += s['ds'][0,:]  * ufn[0,:]  * qnxfn_i[0,:]
-                    yCt_i[-1,:] -= s['ds'][-1,:] * ufn[-1,:] * Ctxfn_i[-1,:] #upper y-face
+                        yqs_i[0,:]  += s['dsz'][0,:]  * ufn[0,:]  * qsxfn_i[0,:]
+                        yqn_i[0,:]  += s['dsz'][0,:]  * ufn[0,:]  * qnxfn_i[0,:]
+                    yCt_i[-1,:] -= s['dsz'][-1,:] * ufn[-1,:] * Ctxfn_i[-1,:] #upper y-face
                     if qflag :
-                        yqs_i[-1,:] -= s['ds'][-1,:] * ufn[-1,:] * qsxfn_i[-1,:]
-                        yqn_i[-1,:] -= s['ds'][-1,:] * ufn[-1,:] * qnxfn_i[-1,:]
+                        yqs_i[-1,:] -= s['dsz'][-1,:] * ufn[-1,:] * qsxfn_i[-1,:]
+                        yqn_i[-1,:] -= s['dsz'][-1,:] * ufn[-1,:] * qnxfn_i[-1,:]
                 else:
                     raise ValueError('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'])
                 
@@ -1340,12 +1340,12 @@ class AeoLiS(IBmi):
                 if Ct_i.min() < 0.:
                     ix = Ct_i < 0.
                     
-                    logger.warn(format_log('Removing negative concentrations',
-                                           nrcells=np.sum(ix),
-                                           fraction=i,
-                                           iteration=n,
-                                           minvalue=Ct_i.min(),
-                                           **logprops))
+#                    logger.warn(format_log('Removing negative concentrations',
+#                                           nrcells=np.sum(ix),
+#                                           fraction=i,
+#                                           iteration=n,
+#                                           minvalue=Ct_i.min(),
+#                                           **logprops))
 
                     Ct_i[~ix] *= 1. + Ct_i[ix].sum() / Ct_i[~ix].sum()
                     Ct_i[ix] = 0.
@@ -1412,10 +1412,10 @@ class AeoLiS(IBmi):
         ix = 1. - np.sum(w, axis=2) > p['max_error']
         if np.any(ix):
             self._count('supplylim')
-            logger.warn(format_log('Ran out of sediment',
-                                   nrcells=np.sum(ix),
-                                   minweight=np.sum(w, axis=-1).min(),
-                                   **logprops))
+#            logger.warn(format_log('Ran out of sediment',
+#                                   nrcells=np.sum(ix),
+#                                   minweight=np.sum(w, axis=-1).min(),
+#                                   **logprops))
         # only if q is not solved for:
         if ~qflag :
             qs = Ct * s['ugs'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
