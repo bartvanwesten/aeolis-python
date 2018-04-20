@@ -60,19 +60,35 @@ def equilibrium(s, p):
         nf = p['nfractions']
         uw = s['uw'][:,:,np.newaxis].repeat(nf, axis=2)
         tau = s['tau'][:,:,np.newaxis].repeat(nf, axis=2)
+        taus = s['taus'][:,:,np.newaxis].repeat(nf, axis=2)
+        taun = s['taun'][:,:,np.newaxis].repeat(nf, axis=2)
         ix = tau != 0.
+        
+        # equilibrium velocity
+        s['uu'] = np.zeros(uw.shape)
+        s['uus'] = np.zeros(uw.shape)
+        s['uun'] = np.zeros(uw.shape)
+        Lu = 2. * p['rhop'] / p['rhoa'] * p['grain_size'].reshape((1,1,-1))
+        Lu = Lu.repeat(p['ny']+1, axis=0)
+        Lu = Lu.repeat(p['nx']+1, axis=1)
+        
+        s['uu'][ix]  = Lu[ix] / p['T']
+        s['uus'][ix] = s['uu'][ix] * taus[ix] / tau[ix]
+        s['uun'][ix] = s['uu'][ix] * taun[ix] / tau[ix]
+        
+        # equilibrium concentration
         
         s['Cu'] = np.zeros(uw.shape)
 
         if p['method_transport'].lower() == 'bagnold':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (tau[ix] - s['uth'][ix])**3 / uw[ix])
+                                     * (tau[ix] - s['uth'][ix])**3 / s['uu'][ix])
         elif p['method_transport'].lower() == 'kawamura':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (tau[ix] + s['uth'][ix])**2 * (tau[ix] - s['uth'][ix]) / uw[ix])
+                                     * (tau[ix] + s['uth'][ix])**2 * (tau[ix] - s['uth'][ix]) / s['uu'][ix])
         elif p['method_transport'].lower() == 'lettau':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (tau[ix] - s['uth'][ix]) * tau[ix]**2 / uw[ix])
+                                     * (tau[ix] - s['uth'][ix]) * tau[ix]**2 / s['uu'][ix])
         else:
             logger.log_and_raise('Unknown transport formulation [%s]' % p['method_transport'], exc=ValueError)
     

@@ -604,7 +604,7 @@ class AeoLiS(IBmi):
         return self.solve(alpha=.5, beta=1.)
 
     
-    def solve(self, alpha=.5, beta=1.):
+    def solve_bas(self, alpha=.5, beta=1.):
         '''Implements the explicit Euler forward, implicit Euler backward and semi-implicit Crank-Nicolson numerical schemes
 
         Determines weights of sediment fractions, sediment pickup and
@@ -893,6 +893,542 @@ class AeoLiS(IBmi):
                     w_air=w_air,
                     w_bed=w_bed)
 
+    def solve(self, alpha=.5, beta=1.):
+        '''Implements the explicit Euler forward, implicit Euler backward and semi-implicit Crank-Nicolson numerical schemes
+
+        Determines weights of sediment fractions, sediment pickup and
+        instantaneous sediment concentration. Returns a partial
+        spatial grid dictionary that can be used to update the global
+        spatial grid dictionary.
+
+        Parameters
+        ----------
+        alpha : float, optional
+            Implicitness coefficient (0.0 for Euler forward, 1.0 for Euler backward or 0.5 for Crank-Nicolson, default=0.5)
+        beta : float, optional
+            Centralization coefficient (1.0 for upwind or 0.5 for centralized, default=1.0)
+
+        Returns
+        -------
+        dict
+            Partial spatial grid dictionary
+
+        Examples
+        --------
+        >>> model.s.update(model.solve(alpha=1., beta=1.) # euler backward
+
+        >>> model.s.update(model.solve(alpha=.5, beta=1.) # crank-nicolson
+
+        See Also
+        --------
+        model.AeoLiS.euler_forward
+        model.AeoLiS.euler_backward
+        model.AeoLiS.crank_nicolson
+        transport.compute_weights
+        transport.renormalize_weights
+
+        '''
+
+        print("%g" % self.t)
+        
+        l = self.l
+        s = self.s
+        p = self.p
+
+        Ct = s['Ct'].copy()
+        qs = s['qs'].copy()
+        qn = s['qn'].copy()
+        pickup = s['pickup'].copy()
+        
+        qflag = p['process_inertia']
+
+        # compute transport weights for all sediment fractions
+        w_init, w_air, w_bed = aeolis.transport.compute_weights(s, p)
+
+        if self.t == 0.:
+            # use initial guess for first time step
+            w = p['grain_dist'].reshape((1,1,-1))
+            w = w.repeat(p['ny']+1, axis=0)
+            w = w.repeat(p['nx']+1, axis=1)
+            return dict(w=w)
+        else:
+            w = w_init.copy()
+
+        # set model state properties that are added to warnings and errors
+        logprops = dict(minwind=s['uw'].min(),
+                        maxdrop=(l['uw']-s['uw']).max(),
+                        time=self.t,
+                        dt=self.dt)
+
+        # to be removed: use equilibrium grain velocity field for now
+        # ! be aware: this is approx 1.25 m/s (much smaller than wind velocity)
+        ix = Ct > p['max_error']
+        ugs = s['uus'].copy()
+        ugn = s['uun'].copy()
+        # if qflag : # te gevaarlijk voor kleine Ct, daarom commented
+            # ugs[ix] = qs[ix] / Ct[ix] #let op want voor kleine Ct kan dit gevaarlijk zijn...
+            # ugn[ix] = qn[ix] / Ct[ix]
+        s['ugs'] = np.sum(w * ugs,axis=-1) #slechts 1 transportsnelheid voor alle fracties
+        s['ugn'] = np.sum(w * ugn,axis=-1)
+
+        #alternative (as in original aeolis model): set grain velocity to wind velocity
+        #s['ugs'] = s['uws']
+        #s['ugn'] = s['uwn']
+
+        #define velocity fluxes
+        ufs = np.zeros((p['ny']+1,p['nx']+2))
+        ufs[:,1:-1] = 0.5*s['ugs'][:,:-1] + 0.5*s['ugs'][:,1:]
+        ufn = np.zeros((p['ny']+2,p['nx']+1))
+        ufn[1:-1,:] = 0.5*s['ugn'][:-1,:] + 0.5*s['ugn'][1:,:]
+        #boundary values
+        ufs[:,0]  = s['ugs'][:,0]
+        ufs[:,-1] = s['ugs'][:,-1]
+        if p['boundary_lateral'] == 'circular':
+            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
+            ufn[-1,:] = ufn[0,:]
+        else:
+            ufn[0,:]  = s['ugn'][0,:]
+            ufn[-1,:] = s['ugn'][-1,:]
+        
+        beta = abs(beta)
+        if beta >= 1.:
+            # define upwind direction
+            ixfs = np.asarray(ufs >= 0., dtype=np.float)
+            ixfn = np.asarray(ufn >= 0., dtype=np.float)
+        else:
+            # or centralizing weights
+            ixfs = beta + np.zeros(ufs)
+            ixfn = beta + np.zeros(ufn)#
+
+        # initialize matrix diagonals
+        A0 = np.zeros(s['uw'].shape)
+        Apx = np.zeros(s['uw'].shape)
+        Ap1 = np.zeros(s['uw'].shape)
+        Amx = np.zeros(s['uw'].shape)
+        Am1 = np.zeros(s['uw'].shape)
+
+        # populate matrix diagonals
+        A0         += s['dsdn'] / self.dt                                        #time derivative
+        A0         += s['dsdn'] / p['T']                                 * alpha #source term
+        A0[:,1:]   -= s['dn'][:,1:]  * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #lower x-face
+        Am1[:,1:]  -= s['dn'][:,1:]  * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #lower x-face
+        A0[:,:-1]  += s['dn'][:,:-1] * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #upper x-face
+        Ap1[:,:-1] += s['dn'][:,:-1] * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #upper x-face
+        A0[1:,:]   -= s['ds'][1:,:]  * ufn[1:-1,:] * (1. - ixfn[1:-1,:]) * alpha #lower y-face
+        Amx[1:,:]  -= s['ds'][1:,:]  * ufn[1:-1,:] *       ixfn[1:-1,:]  * alpha #lower y-face
+        A0[:-1,:]  += s['ds'][:-1,:] * ufn[1:-1,:] *       ixfn[1:-1,:]  * alpha #upper y-face
+        Apx[:-1,:] += s['ds'][:-1,:] * ufn[1:-1,:] * (1. - ixfn[1:-1,:]) * alpha #upper y-face
+        
+        # add boundaries
+        # offshore boundary (i=0)
+        if p['boundary_offshore'] == 'noflux':
+            #nothing to be done
+            pass
+        elif p['boundary_offshore'] == 'saturatedflux':
+            #nothing to be done
+            pass
+        elif p['boundary_offshore'] == 'constant':
+            #constant sediment concentration (Ct) in the air
+            A0[:,0] = 1.
+            Apx[:,0] = 0.
+            Amx[:,0] = 0.
+            Ap1[:,0] = 0.
+            Am1[:,0] = 0.
+        elif p['boundary_offshore'] == 'gradient':
+            #remove the flux at the inner face of the cell
+            A0[:,0]  -= s['dn'][:,0] * ufs[:,1] *       ixfs[:,1]  * alpha #upper x-face
+            Ap1[:,0] -= s['dn'][:,0] * ufs[:,1] * (1. - ixfs[:,1]) * alpha #upper x-face
+        elif p['boundary_offshore'] == 'circular':
+            raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
+        else:
+            raise ValueError('Unknown offshore boundary condition [%s]' % self.p['boundary_offshore'])
+
+        #onshore boundary (i=nx)
+        if p['boundary_onshore'] == 'noflux':
+            #nothing to be done
+            pass
+        elif p['boundary_onshore'] == 'saturatedflux':
+            #nothing to be done
+            pass
+        elif p['boundary_onshore'] == 'constant':
+            #constant sediment concentration (hC) in the air
+            A0[:,-1] = 1.
+            Apx[:,-1] = 0.
+            Amx[:,-1] = 0.
+            Ap1[:,-1] = 0.
+            Am1[:,-1] = 0.
+        elif p['boundary_onshore'] == 'gradient':
+            #remove the flux at the inner face of the cell
+            A0[:,-1]   += s['dn'][:,-1]  * ufs[:,-2]   * (1. - ixfs[:,-2]) * alpha #lower x-face
+            Am1[:,-1]  += s['dn'][:,-1]  * ufs[:,-2]   *       ixfs[:,-2]  * alpha #lower x-face
+        elif p['boundary_onshore'] == 'circular':
+            raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
+        else:
+            raise ValueError('Unknown offshore boundary condition [%s]' % self.p['boundary_onshore'])
+        
+        #lateral boundaries (j=0; j=ny)    
+        if p['boundary_lateral'] == 'noflux':
+            #nothing to be done
+            pass
+        elif p['boundary_lateral'] == 'saturatedflux':
+            #nothing to be done
+            pass
+        elif p['boundary_lateral'] == 'constant':
+            #constant sediment concentration (hC) in the air
+            A0[0,:] = 1.
+            Apx[0,:] = 0.
+            Amx[0,:] = 0.
+            Ap1[0,:] = 0.
+            Am1[0,:] = 0.
+            A0[-1,:] = 1.
+            Apx[-1,:] = 0.
+            Amx[-1,:] = 0.
+            Ap1[-1,:] = 0.
+            Am1[-1,:] = 0.
+        elif p['boundary_lateral'] == 'gradient':
+            #remove the flux at the inner face of the cell
+            A0[0,:]   -= s['ds'][0,:] * ufn[1,:]   *       ixfn[1,:]   * alpha #upper y-face
+            Apx[0,:]  -= s['ds'][0,:] * ufn[1,:]   * (1. - ixfn[1,:])  * alpha #upper y-face
+            A0[-1,:]  += s['ds'][-1,:] * ufn[-2,:] * (1. - ixfn[-2,:]) * alpha #lower y-face
+            Amx[-1,:] += s['ds'][-1,:] * ufn[-2,:] *       ixfn[-2,:]  * alpha #lower y-face
+        elif p['boundary_lateral'] == 'circular':
+            A0[0,:]   -= s['ds'][0,:]  * ufn[0,:]  * (1. - ixfn[0,:])  * alpha #lower y-face
+            Amx[0,:]  -= s['ds'][0,:]  * ufn[0,:]  *       ixfn[0,:]   * alpha #lower y-face
+            A0[-1,:]  += s['ds'][-1,:] * ufn[-1,:] *       ixfn[-1,:]  * alpha #upper y-face
+            Apx[-1,:] += s['ds'][-1,:] * ufn[-1,:] * (1. - ixfn[-1,:]) * alpha #upper y-face
+        else:
+            raise ValueError('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'])
+
+        # construct sparse matrix
+        if p['ny'] > 0:
+            i = p['nx']+1
+            A = scipy.sparse.diags((Apx.flatten()[:i],
+                                    Amx.flatten()[i:],
+                                    Am1.flatten()[1:],
+                                    A0.flatten(),
+                                    Ap1.flatten()[:-1],
+                                    Apx.flatten()[i:],
+                                    Amx.flatten()[:i]),
+                                   (-i*p['ny'],-i,-1,0,1,i,i*p['ny']), format='csr')
+        else:
+            A = scipy.sparse.diags((Am2.flatten()[2:],
+                                    Am1.flatten()[1:],
+                                    A0.flatten(),
+                                    Ap1.flatten()[:-1],
+                                    Ap2.flatten()[:-2]),
+                                   (-2,-1,0,1,2), format='csr')
+
+        # solve transport for each fraction separately using latest
+        # available weights
+        nf = p['nfractions']
+        for i in range(nf): #loop over fractions
+
+            # renormalize weights for all fractions equal or larger
+            # than the current one such that the sum of all weights is
+            # unity
+            w = aeolis.transport.renormalize_weights(w, i)
+
+            # iteratively find a solution of the linear system that
+            # does not violate the availability of sediment in the bed
+            for n in range(p['max_iter']):
+                self._count('matrixsolve')
+                print("iteration nr = %d" % n)
+                # define upwind face value
+                # sediment concentration
+                Ctxfs_i = np.zeros(ufs.shape)
+                Ctxfn_i = np.zeros(ufn.shape)
+                Ctxfs_i[:,1:-1] = ixfs[:,1:-1] * ( alpha * Ct[:,:-1,i] \
+                                                  + (1. - alpha ) * l['Ct'][:,:-1,i] ) \
+                    + (1. - ixfs[:,1:-1]) * ( alpha * Ct[:,1:,i] \
+                                             + (1. - alpha ) * l['Ct'][:,1:,i] )
+                Ctxfn_i[1:-1,:] = ixfn[1:-1,:] * (alpha * Ct[:-1,:,i] \
+                                                  + (1. - alpha ) * l['Ct'][:-1,:,i] ) \
+                    + (1. - ixfn[1:-1,:]) * ( alpha * Ct[1:,:,i] \
+                                             + (1. - alpha ) * l['Ct'][1:,:,i] )
+                if p['boundary_lateral'] == 'circular':
+                    Ctxfn_i[0,:] = ixfn[0,:] * (alpha * Ct[-1,:,i] \
+                                                + (1. - alpha ) * l['Ct'][-1,:,i] ) \
+                        + (1. - ixfn[0,:]) * ( alpha * Ct[0,:,i] \
+                                               + (1. - alpha ) * l['Ct'][0,:,i] )
+                    Ctxfn_i[-1,:] = Ctxfn_i[0,:]                   
+                if qflag :
+                    # sediment flux in x-direction
+                    qsxfs_i = np.zeros(ufs.shape)
+                    qsxfn_i = np.zeros(ufn.shape)
+                    qsxfs_i[:,1:-1] = ixfs[:,1:-1] * ( alpha * qs[:,:-1,i] \
+                                                      + (1. - alpha ) * l['qs'][:,:-1,i] ) \
+                        + (1. - ixfs[:,1:-1]) * ( alpha * qs[:,1:,i] \
+                                                 + (1. - alpha ) * l['qs'][:,1:,i] )
+                    qsxfn_i[1:-1,:] = ixfn[1:-1,:] * (alpha * qs[:-1,:,i] \
+                                                      + (1. - alpha ) * l['qs'][:-1,:,i] ) \
+                        + (1. - ixfn[1:-1,:]) * ( alpha * qs[1:,:,i] \
+                                                 + (1. - alpha ) * l['qs'][1:,:,i] )
+                    if p['boundary_lateral'] == 'circular':
+                        qsxfn_i[0,:] = ixfn[0,:] * (alpha * qs[-1,:,i] \
+                                                    + (1. - alpha ) * l['qs'][-1,:,i] ) \
+                            + (1. - ixfn[0,:]) * ( alpha * qs[0,:,i] \
+                                                   + (1. - alpha ) * l['qs'][0,:,i] )
+                        qsxfn_i[-1,:] = qsxfn_i[0,:]                   
+                    # sediment flux in y-direction
+                    qnxfs_i = np.zeros(ufs.shape)
+                    qnxfn_i = np.zeros(ufn.shape)
+                    qnxfs_i[:,1:-1] = ixfs[:,1:-1] * ( alpha * qn[:,:-1,i] \
+                                                      + (1. - alpha ) * l['qn'][:,:-1,i] ) \
+                        + (1. - ixfs[:,1:-1]) * ( alpha * qn[:,1:,i] \
+                                                 + (1. - alpha ) * l['qn'][:,1:,i] )
+                    qnxfn_i[1:-1,:] = ixfn[1:-1,:] * (alpha * qn[:-1,:,i] \
+                                                      + (1. - alpha ) * l['qn'][:-1,:,i] ) \
+                        + (1. - ixfn[1:-1,:]) * ( alpha * qn[1:,:,i] \
+                                                 + (1. - alpha ) * l['qn'][1:,:,i] )
+                    if p['boundary_lateral'] == 'circular':
+                        qnxfn_i[0,:] = ixfn[0,:] * (alpha * qn[-1,:,i] \
+                                                    + (1. - alpha ) * l['qn'][-1,:,i] ) \
+                            + (1. - ixfn[0,:]) * ( alpha * qn[0,:,i] \
+                                                   + (1. - alpha ) * l['qn'][0,:,i] )
+                        qnxfn_i[-1,:] = qnxfn_i[0,:]                   
+                        
+                # calculate pickup
+                D_i = s['dsdn'] / p['T'] * ( alpha * Ct[:,:,i]  \
+                                            + (1. - alpha ) * l['Ct'][:,:,i] )
+                A_i = s['dsdn'] / p['T'] * s['mass'][:,:,0,i] + D_i # Availability
+                U_i = s['dsdn'] / p['T'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
+                                            + (1. - alpha ) * l['w'][:,:,i] * l['Cu'][:,:,i] )
+                #deficit_i = E_i - A_i
+                E_i= np.minimum(U_i, A_i)
+                #pickup_i = E_i - D_i
+
+                # create the right hand side of the linear system
+                # sediment concentration
+                yCt_i = np.zeros(s['uw'].shape)
+                yCt_i         -= s['dsdn'] / self.dt * ( Ct[:,:,i] \
+                                                        - l['Ct'][:,:,i] )      #time derivative
+                yCt_i         += E_i - D_i                                      #source term
+                yCt_i[:,1:]   += s['dn'][:,1:]  * ufs[:,1:-1] * Ctxfs_i[:,1:-1] #lower x-face
+                yCt_i[:,:-1]  -= s['dn'][:,:-1] * ufs[:,1:-1] * Ctxfs_i[:,1:-1] #upper x-face
+                yCt_i[1:,:]   += s['ds'][1:,:]  * ufn[1:-1,:] * Ctxfn_i[1:-1,:] #lower y-face
+                yCt_i[:-1,:]  -= s['ds'][:-1,:] * ufn[1:-1,:] * Ctxfn_i[1:-1,:] #upper y-face
+                if qflag :
+                    #sediment flux in x-direction
+                    yqs_i = np.zeros(s['uw'].shape)
+                    yqs_i         -= s['dsdn'] / self.dt * ( qs[:,:,i] \
+                                                            - l['qs'][:,:,i] )      #time derivative
+                    yqs_i         += s['uus'][:,:,i] * E_i - ugs[:,:,i] * D_i       #source term
+                    yqs_i[:,1:]   += s['dn'][:,1:]  * ufs[:,1:-1] * qsxfs_i[:,1:-1] #lower x-face
+                    yqs_i[:,:-1]  -= s['dn'][:,:-1] * ufs[:,1:-1] * qsxfs_i[:,1:-1] #upper x-face
+                    yqs_i[1:,:]   += s['ds'][1:,:]  * ufn[1:-1,:] * qsxfn_i[1:-1,:] #lower y-face
+                    yqs_i[:-1,:]  -= s['ds'][:-1,:] * ufn[1:-1,:] * qsxfn_i[1:-1,:] #upper y-face
+                    #sediment flux in y-direction
+                    yqn_i = np.zeros(s['uw'].shape)
+                    yqn_i         -= s['dsdn'] / self.dt * ( qn[:,:,i] \
+                                                            - l['qn'][:,:,i] )      #time derivative
+                    yqn_i         += s['uun'][:,:,i] * E_i - ugn[:,:,i] * D_i       #source term
+                    yqn_i[:,1:]   += s['dn'][:,1:]  * ufs[:,1:-1] * qnxfs_i[:,1:-1] #lower x-face
+                    yqn_i[:,:-1]  -= s['dn'][:,:-1] * ufs[:,1:-1] * qnxfs_i[:,1:-1] #upper x-face
+                    yqn_i[1:,:]   += s['ds'][1:,:]  * ufn[1:-1,:] * qnxfn_i[1:-1,:] #lower y-face
+                    yqn_i[:-1,:]  -= s['ds'][:-1,:] * ufn[1:-1,:] * qnxfn_i[1:-1,:] #upper y-face
+                    
+                # boundary conditions
+                # offshore boundary (i=0)
+                if p['boundary_offshore'] == 'noflux':
+                    pass
+                elif p['boundary_offshore'] == 'saturatedflux':
+                    yCt_i[:,0]   += s['dn'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] #lower x-face
+                    if qflag :
+                        yqs_i[:,0]   += s['dn'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
+                                         * s['uus'][:,0,i]
+                        yqn_i[:,0]   += s['dn'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
+                                         * s['uun'][:,0,i]
+                elif p['boundary_offshore'] == 'constant':
+                    #constant sediment concentration (Ct) in the air (for now = 0)
+                    yCt_i[:,0]   = 0.
+                    if qflag :
+                        yqs_i[:,0]   = 0.
+                        yqn_i[:,0]   = 0.
+                elif p['boundary_offshore'] == 'gradient':
+                    #remove the flux at the inner face of the cell
+                    yCt_i[:,0]  += s['dn'][:,1] * ufs[:,1] * Ctxfs_i[:,1] #upper x-face
+                    if qflag :
+                        yqs_i[:,0]  += s['dn'][:,1] * ufs[:,1] * qsxfs_i[:,1]
+                        yqn_i[:,0]  += s['dn'][:,1] * ufs[:,1] * qnxfs_i[:,1]
+                elif p['boundary_offshore'] == 'circular':
+                    raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
+                else:
+                    raise ValueError('Unknown offshore boundary condition [%s]' % self.p['boundary_offshore'])
+                # onshore boundary (i=nx)
+                if p['boundary_onshore'] == 'noflux':
+                    pass
+                elif p['boundary_onshore'] == 'saturatedflux':
+                    yCt_i[:,-1]   += s['dn'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] #upper x-face
+                    if qflag :
+                        yqs_i[:,-1]   += s['dn'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
+                                         * s['uus'][:,-1,i]
+                        yqn_i[:,-1]   += s['dn'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
+                                         * s['uun'][:,-1,i]
+                elif p['boundary_onshore'] == 'constant':
+                    #constant sediment concentration (Ct) in the air (for now = 0)
+                    yCt_i[:,-1]   = 0.
+                    if qflag :
+                        yqs_i[:,-1]   = 0.
+                        yqn_i[:,-1]   = 0.
+                elif p['boundary_onshore'] == 'gradient':
+                    #remove the flux at the inner face of the cell
+                    yCt_i[:,-1]  -= s['dn'][:,-1] * ufs[:,-2] * Ctxfs_i[:,-2] #lower x-face
+                    if qflag :
+                        yqs_i[:,-1]  -= s['dn'][:,-1] * ufs[:,-2] * qsxfs_i[:,-2]
+                        yqn_i[:,-1]  -= s['dn'][:,-1] * ufs[:,-2] * qnxfs_i[:,-2]
+                elif p['boundary_onshore'] == 'circular':
+                    raise NotImplementedError('Cross-shore cricular boundary condition not yet implemented')
+                else:
+                    raise ValueError('Unknown onshore boundary condition [%s]' % self.p['boundary_onshore'])
+                #lateral boundaries (j=0; j=ny)    
+                if p['boundary_lateral'] == 'noflux':
+                    #nothing to be done
+                    pass
+                elif p['boundary_lateral'] == 'saturatedflux':
+                    yCt_i[:,0]   += s['ds'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  #lower y-face
+                    if qflag :
+                        yqs_i[:,0]   += s['ds'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
+                                         * s['uus'][0,:,i]
+                        yqn_i[:,0]   += s['ds'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
+                                         * s['uun'][0,:,i]
+                    yCt_i[:,-1]  -= s['ds'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] #upper y-face
+                    if qflag :
+                        yqs_i[:,-1]  -= s['ds'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
+                                         * s['uus'][-1,:,i]
+                        yqn_i[:,-1]  -= s['ds'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
+                                         * s['uun'][-1,:,i]
+                elif p['boundary_lateral'] == 'constant':
+                    #constant sediment concentration (hC) in the air
+                    yCt_i[0,:]  = 0.
+                    yCt_i[-1,:] = 0.
+                elif p['boundary_lateral'] == 'gradient':
+                    #remove the flux at the inner face of the cell
+                    yCt_i[-1,:] -= s['ds'][-1,:] * ufn[-2,:] * Ctxfn_i[-2,:] #lower y-face
+                    if qflag :
+                        yqs_i[-1,:] -= s['ds'][-1,:] * ufn[-2,:] * qsxfn_i[-2,:]
+                        yqn_i[-1,:] -= s['ds'][-1,:] * ufn[-2,:] * qnxfn_i[-2,:]
+                    yCt_i[0,:]  += s['ds'][1,:]  * ufn[1,:]  * Ctxfn_i[1,:]  #upper y-face
+                    if qflag :
+                        yqs_i[0,:]  += s['ds'][1,:]  * ufn[1,:]  * qsxfn_i[1,:]
+                        yqn_i[0,:]  += s['ds'][1,:]  * ufn[1,:]  * qnxfn_i[1,:]
+                elif p['boundary_lateral'] == 'circular':
+                    yCt_i[0,:]  += s['ds'][0,:]  * ufn[0,:]  * Ctxfn_i[0,:]  #lower y-face
+                    if qflag :
+                        yqs_i[0,:]  += s['ds'][0,:]  * ufn[0,:]  * qsxfn_i[0,:]
+                        yqn_i[0,:]  += s['ds'][0,:]  * ufn[0,:]  * qnxfn_i[0,:]
+                    yCt_i[-1,:] -= s['ds'][-1,:] * ufn[-1,:] * Ctxfn_i[-1,:] #upper y-face
+                    if qflag :
+                        yqs_i[-1,:] -= s['ds'][-1,:] * ufn[-1,:] * qsxfn_i[-1,:]
+                        yqn_i[-1,:] -= s['ds'][-1,:] * ufn[-1,:] * qnxfn_i[-1,:]
+                else:
+                    raise ValueError('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'])
+                
+                # print("ugs = %.*g" % (3,s['ugs'][10,10]))
+                # print("ugn = %.*g" % (3,s['ugn'][10,10]))
+                # print("%.*g" % (3,np.amax(np.absolute(y_i))))
+                # solve system with current weights
+                Ct_i = Ct[:,:,i].flatten()
+                Ct_i += scipy.sparse.linalg.spsolve(A, yCt_i.flatten())
+                Ct_i = prevent_tiny_negatives(Ct_i, p['max_error'])
+                if qflag :
+                    qs_i = qs[:,:,i].flatten()
+                    qs_i += scipy.sparse.linalg.spsolve(A, yqs_i.flatten())
+                    qn_i = qn[:,:,i].flatten()
+                    qn_i += scipy.sparse.linalg.spsolve(A, yqn_i.flatten())
+                
+                # check for negative values
+                if Ct_i.min() < 0.:
+                    ix = Ct_i < 0.
+                    
+                    logger.warn(format_log('Removing negative concentrations',
+                                           nrcells=np.sum(ix),
+                                           fraction=i,
+                                           iteration=n,
+                                           minvalue=Ct_i.min(),
+                                           **logprops))
+
+                    Ct_i[~ix] *= 1. + Ct_i[ix].sum() / Ct_i[~ix].sum()
+                    Ct_i[ix] = 0.
+
+
+                # determine pickup and deficit for current fraction
+                Cu_i = s['Cu'][:,:,i].flatten()
+                mass_i = s['mass'][:,:,0,i].flatten()
+                w_i = w[:,:,i].flatten()
+                pickup_i = (w_i * Cu_i - Ct_i) / p['T'] * self.dt # Dit klopt niet! enkel geldig bij backward euler
+                deficit_i = pickup_i - mass_i
+                ix = (deficit_i > p['max_error']) \
+                     & (w_i * Cu_i > 0.)
+
+                pickup[:,:,i] = pickup_i.reshape(yCt_i.shape)
+                Ct[:,:,i] = Ct_i.reshape(yCt_i.shape)
+                if qflag :
+                    qs[:,:,i] = qs_i.reshape(yqs_i.shape)###
+                    qn[:,:,i] = qn_i.reshape(yqn_i.shape)###
+                     
+                # quit the iteration if there is no deficit, otherwise
+                # back-compute the maximum weight allowed to get zero
+                # deficit for the current fraction and progress to
+                # the next iteration step
+                if not np.any(ix):
+                    logger.debug(format_log('Iteration converged',
+                                            steps=n,
+                                            fraction=i,
+                                            **logprops))
+                    pickup_i = np.minimum(pickup_i, mass_i)
+                    break
+                else:
+                    w_i[ix] = (mass_i[ix] * p['T'] / self.dt \
+                               + Ct_i[ix]) / Cu_i[ix]
+                    w[:,:,i] = w_i.reshape(yCt_i.shape)
+
+            # throw warning if the maximum number of iterations was
+            # reached
+            if np.any(ix):
+                logger.warn(format_log('Iteration not converged',
+                                       nrcells=np.sum(ix),
+                                       fraction=i,
+                                       **logprops))
+            
+            # check for unexpected negative values
+            if Ct_i.min() < 0:
+                logger.warn(format_log('Negative concentrations',
+                                       nrcells=np.sum(Ct_i<0.),
+                                       fraction=i,
+                                       minvalue=Ct_i.min(),
+                                       **logprops))
+            if w_i.min() < 0:
+                logger.warn(format_log('Negative weights',
+                                       nrcells=np.sum(w_i<0),
+                                       fraction=i,
+                                       minvalue=w_i.min(),
+                                       **logprops))
+        # end loop over frations
+
+
+        # check if there are any cells where the sum of all weights is
+        # smaller than unity. these cells are supply-limited for all
+        # fractions. Log these events.
+        ix = 1. - np.sum(w, axis=2) > p['max_error']
+        if np.any(ix):
+            self._count('supplylim')
+            logger.warn(format_log('Ran out of sediment',
+                                   nrcells=np.sum(ix),
+                                   minweight=np.sum(w, axis=-1).min(),
+                                   **logprops))
+        # only if q is not solved for:
+        if ~qflag :
+            qs = Ct * s['ugs'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
+            qn = Ct * s['ugn'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
+                    
+        return dict(Ct=Ct,
+                    qs=qs,
+                    qn=qn,
+                    pickup=pickup,
+                    w=w,
+                    w_init=w_init,
+                    w_air=w_air,
+                    w_bed=w_bed)
 
     def get_count(self, name):
         '''Get counter value

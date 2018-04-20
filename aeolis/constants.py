@@ -77,6 +77,9 @@ MODEL_STATE = {
         'uwy',                              # [m/s] Component of wind velocity in y-direction
         'zsep',
         'zsepdelta',
+        'ug',                               # [m/s] Grain velocity
+        'ugs',                              # [m/s] Component of grain velocity in x-direction
+        'ugn',                              # [m/s] Component of grain velocity in y-direction
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -90,6 +93,9 @@ MODEL_STATE = {
         'w_air',                            # [-] Weights of sediment fractions based on grain size distribution in the air
         'w_bed',                            # [-] Weights of sediment fractions based on grain size distribution in the bed
         'uth',                              # [m/s] Shear velocity threshold
+        'uu',                               # [m/s^2] Equilibrium sediment velocity
+        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction
+        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction
     ),
     ('ny','nx','nlayers') : (
         'thlyr',                            # [m] Bed composition layer thickness
