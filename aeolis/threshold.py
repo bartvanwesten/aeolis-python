@@ -339,7 +339,7 @@ def non_erodible(s, p): #NEW!
     s['zne'][:,:] = p['ne_file']
     
     # Increase velocity threshold infinite
-    s['uth'][s['zb']<s['zne']] = np.inf
+    s['uth'][s['zb']<=s['zne']] = np.inf
     #[:,:,0]
     return s
 

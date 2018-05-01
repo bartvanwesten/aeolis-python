@@ -2102,7 +2102,8 @@ class AeoLiSRunner(AeoLiS):
             t1 = timedelta(0, round(t-self.t0))
             t2 = timedelta(0, round((t-self.t0)/p))
             t3 = timedelta(0, round((t-self.t0)*(1.-p)/p))
-            logger.info('%05.1f%%   %s / %s / %s' % (p * 100., t1, t2, t3))
+            t4 = self.t/self.p['dt']
+            logger.info('%05.1f%%   %s / %s / %s / %s' % (p * 100., t1, t2, t3, t4))
             self.tlog = time.time()
             self.plog = pr
             

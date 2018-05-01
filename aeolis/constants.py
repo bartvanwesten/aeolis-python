@@ -83,7 +83,10 @@ MODEL_STATE = {
         'bubble',                           # TEMP!
         'stall',                            # TEMP!
         'zsepnofil',                        # TEMP!
-        'ddz',                              # TEMP!
+        'dz',                              # TEMP!
+        'hs0',
+        'hs1',
+        'zshear',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -127,7 +130,7 @@ DEFAULT_CONFIG = {
     'process_meteo'       : False,              # Enable the process of meteo
     'process_salt'        : False,              # Enable the process of salt
     'process_humidity'    : False,              # Enable the process of humidity
-    'process_avalanche'   : False,              # NEW! Enable the process of avalanching
+    'process_avalanche'   : True,              # NEW! Enable the process of avalanching
     'process_inertia'     : True,               # NEW!
     'th_grainsize'        : True,               # Enable wind velocity threshold based on grainsize
     'th_bedslope'         : False,              # Enable wind velocity threshold based on bedslope

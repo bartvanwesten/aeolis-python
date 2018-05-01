@@ -180,7 +180,7 @@ def update(s, p):
         
     #TEMP + manual: add sediment to boundary
     
-#    s['zb'][:,:8] = 0.
+#    s['zb'][:,3] = 0.05
 
     return s
 

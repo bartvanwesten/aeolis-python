@@ -58,11 +58,11 @@ def separation(s, p):
     # Calculate delta for relation separation bubble and shear stress
     
     # ACCORDING CDM
-#    m_tau_sepbub = 0.05 # WHAT IS THIS?
-#    slope = np.tan(p['Mcr_dyn'])*dx
-#    delta = 1./(slope*m_tau_sepbub)
+    m_tau_sepbub = 0.05 # WHAT IS THIS?
+    slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
+    delta = 1./(slope*m_tau_sepbub)
     
-    delta = 0.5
+#    delta = 0.5 #better results?
     
 #    print(delta)
     
@@ -84,7 +84,7 @@ def separation(s, p):
     ddz[:,:-1] = dz[:,1:]-dz[:,:-1]
     ddz[:,-1] = ddz[:,-2] 
     
-    s['ddz']=ddz
+    s['dz']=dz
     
     # Determine location of separation bubbles
 #    if p['separationcrit'] == 'down':
@@ -103,12 +103,12 @@ def separation(s, p):
 #    bubble[:,1:-2] = bubble[:,3:]
 #    bubble[:,-2:] = 0
     
-    # In order to reduce the amount of separation bubbles in y-direction to one. JUST TEMP!
-    
     for j in range(0,ny): 
         for i in range(0,nx):
             if (np.sum(stall[j,:i-1])==0. and stall[j,i]==1):
-                bubble[j, i-int(2./dx)] = 1.
+                bubble[j, i-2] = 1.
+                
+                # In order to reduce the amount of separation bubbles in y-direction to one. JUST TEMP!
         for i in range(0,nx):
             if np.sum(bubble[j,:i-1])>0.:
                 bubble[j, i] = 0.

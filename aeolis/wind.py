@@ -123,7 +123,10 @@ def interpolate(s, p, t):
     # compute shear velocity field
     if 'shear' in s.keys():
         
-        s['shear'].set_topo(s['zb'])
+        s = aeolis.separation.separation(s, p)
+        s['zshear'] = np.maximum(s['zb'], s['zsep'])
+        
+        s['shear'].set_topo(s['zshear'])
         s['shear'](u0=s['uw'][0,0],
                    udir=s['udir'][0,0])
         
@@ -131,13 +134,12 @@ def interpolate(s, p, t):
         s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
         s['tau'] = np.hypot(s['taus'], s['taun'])
         
-        s = aeolis.separation.separation(s, p)
+        s['hs0'], s['hs1'] = s['shear'].get_hs()
         
-        s['tau'] *= s['zsepdelta']
-#        s['dtaus'] *= s['zsepbool']
-#        s['dtaun'] *= s['zsepbool']
-#        s['taun'] *= s['zsepbool']
-#        s['taus'] *= s['zsepbool']
+    #Separation bubble
+    s = aeolis.separation.separation(s, p)
+    s['tau'] *= s['zsepdelta']
+    
     return s
 
 
