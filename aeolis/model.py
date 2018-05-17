@@ -51,6 +51,10 @@ import aeolis.transport
 import aeolis.hydro
 import aeolis.netcdf
 import aeolis.constants
+import aeolis.separation
+import aeolis.vegetation
+import aeolis.gridparams
+import aeolis.shear
 
 from aeolis.utils import *
 
@@ -193,6 +197,12 @@ class AeoLiS(IBmi):
 
         # initialize wind model
         self.s = aeolis.wind.initialize(self.s, self.p)
+        
+        # initialize Ts
+        self.s['Ts'] += self.p['T']
+        
+        # initialize vegetation model
+#        self.s = aeolis.vegetation.initialize(self.s, self.p)
 
         
     def update(self, dt=-1):
@@ -225,10 +235,34 @@ class AeoLiS(IBmi):
 
         # store previous state
         self.l = self.s.copy()
+        # TEMP! Copy + Filter
+        self.s['zbold']=self.s['zb'].copy()
         
         # interpolate wind time series
         self.s = aeolis.wind.interpolate(self.s, self.p, self.t)
         
+        # calculate separation bubble
+        self.s = aeolis.separation.separation(self.s, self.p)
+        
+        # calculate shear stresses + filter
+        self.s = aeolis.wind.shear(self.s, self.p)
+        self.s['taunosep']=np.minimum(self.s['taunosep'],0.8)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'taunosep', 'x', 8.0)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'taunosep', 'y', 8.0)
+        
+        # include effect of separation bubble on shear stresses
+        self.s = aeolis.separation.separation_shear(self.s, self.p)
+        self.s['tau']=np.minimum(self.s['tau'],0.8)
+        
+#        self.s['dtaudx1'][:,:-1] = np.abs(self.s['tau'][:,:-1]-self.s['tau'][:,1:])/self.s['tau'][1,1]
+#        print(np.sum(self.s['dtaudx1'])/self.p['ny'])
+        
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'tau', 'x', 15.0)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'tau', 'y', 15.0)
+        
+#        self.s['dtaudx2'][:,:-1] = np.abs(self.s['tau'][:,:-1]-self.s['tau'][:,1:])/self.s['tau'][1,1]
+#        print(np.sum(self.s['dtaudx2'])/self.p['ny'])
+
         # determine optimal time step
         if not self.set_timestep(dt):
             return
@@ -236,15 +270,31 @@ class AeoLiS(IBmi):
         # interpolate hydrodynamic time series
         self.s = aeolis.hydro.interpolate(self.s, self.p, self.t)
         self.s = aeolis.hydro.update(self.s, self.p, self.dt)
-
+        
         # mix top layer
         self.s = aeolis.bed.mixtoplayer(self.s, self.p)
 
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
-
-        # compute equilibrium transport
+        
+        #compute saturation factor, saturation time and equilibrium transport
         self.s = aeolis.transport.equilibrium(self.s, self.p)
+        
+        # calculate saturation_factor
+        self.s['tauTs']=np.minimum(self.s['taunosep'],0.8)
+        self.s['tauTs']=np.maximum(self.s['taunosep'],0.2)
+        self.s = aeolis.separation.separation_shear_Ts(self.s, self.p)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'tauTs', 'x', 15.0)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'tauTs', 'y', 15.0)
+        self.s = aeolis.transport.saturation_factor(self.s, self.p)
+        self.s['Ts']=np.minimum(self.s['Ts'],1.0)
+        self.s['Ts']=np.maximum(self.s['Ts'],0.2)
+        
+#        self.s = aeolis.wind.filter_low_nf(self.s, self.p, 'Ts', 'x', 5.0)
+#        self.s = aeolis.wind.filter_low_nf(self.s, self.p, 'Ts', 'y', 10.0)
+        
+        #compute vegetation shear
+#        self.s = aeolis.vegetation.vegshear(self.s, self.p)
 
         # compute instantaneous transport
         if self.p['scheme'] == 'euler_forward':
@@ -258,9 +308,14 @@ class AeoLiS(IBmi):
 
         # update bed
         self.s = aeolis.bed.update(self.s, self.p)
-
-        # avalanche NEW!
-        self.s = aeolis.bed.avalanche(self.s, self.p)
+        
+        # avalanching
+        if self.p['_time']/self.p['dt'] % 10 == 0:
+            self.s = aeolis.bed.avalanche(self.s, self.p)
+            
+        # grow vegetation
+#        self.s = aeolis.vegetation.germinate(self.s, self.p, self.l, self.t)
+#        self.s = aeolis.vegetation.grow(self.s, self.p, self.l, self.t)
 
         # increment time
         self.t += self.dt * self.p['accfac']
@@ -1355,7 +1410,9 @@ class AeoLiS(IBmi):
                 Cu_i = s['Cu'][:,:,i].flatten()
                 mass_i = s['mass'][:,:,0,i].flatten()
                 w_i = w[:,:,i].flatten()
-                pickup_i = (w_i * Cu_i - Ct_i) / p['T'] * self.dt # Dit klopt niet! enkel geldig bij backward euler
+                Ts_i = s['Ts'][:,:,i].flatten()
+                
+                pickup_i = (w_i * Cu_i - Ct_i) / Ts_i * self.dt # Dit klopt niet! enkel geldig bij backward euler
                 deficit_i = pickup_i - mass_i
                 ix = (deficit_i > p['max_error']) \
                      & (w_i * Cu_i > 0.)
@@ -2102,7 +2159,7 @@ class AeoLiSRunner(AeoLiS):
             t1 = timedelta(0, round(t-self.t0))
             t2 = timedelta(0, round((t-self.t0)/p))
             t3 = timedelta(0, round((t-self.t0)*(1.-p)/p))
-            t4 = self.t/self.p['dt']
+            t4 = self.t/self.p['output_times']
             logger.info('%05.1f%%   %s / %s / %s / %s' % (p * 100., t1, t2, t3, t4))
             self.tlog = time.time()
             self.plog = pr

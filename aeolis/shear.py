@@ -307,7 +307,6 @@ class WindShear:
 #                        break
 #                    
 #        self.igrid['z'][ix] = z * self.get_sigmoid(d)
-
         
     def compute_shear(self, u0, nfilter=(1.,2.)):
         '''Compute wind shear perturbation for given free-flow wind speed on computational grid
@@ -334,23 +333,18 @@ class WindShear:
         ny, nx = g['z'].shape
         kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx, g['dx'])[:]+0.0000000001,
                              2. * np.pi * np.fft.fftfreq(ny, g['dy'])[:]+0.0000000001)
+        
         hs = np.fft.fft2(g['z'])
         
-#        s['hs1'] = hs
+        m_kCut_hs = 8.0
         
-        hs, hsnofilter = self.filter_highfrequenies(kx, ky, hs, nfilter)
-        
-        self.hs0 = hs
-        self.hs1 = hsnofilter
-        
-#        s['hs2'] = hs
+        dk = 2.0 * np.pi / (np.max(g['x']))
+        hs *= np.exp(-(dk*g['x'])**2./(2.*m_kCut_hs**2.))
 
         # 1. Auxiliary variables
         #-----------------------
         # 1.1 Mean lengthscale
-        #L = 2. * np.pi / 4. * np.sum(np.absolute(hs)) / np.sum(np.absolute(kx*hs)) #1/4 of wavelength
-        L = np.sum(np.absolute(hs)) / np.sum(np.absolute(kx*hs)) #according to Duran
-        #print("%.*g"% (3,L_calc))
+        L = np.sum(np.absolute(hs)) / np.sum(np.absolute(kx*hs)) #according to Duran(2007)
         
         # 1.2 Inner layer height
         l = 1.0
@@ -370,33 +364,18 @@ class WindShear:
         # 1.5 extra arryas in Fourier space
         k = np.sqrt(kx**2 + ky**2)
         sigma = np.sqrt(1j * L * kx * self.z0 / l)
-#        sigma = np.sqrt(1j * self.L / 4. * kx * self.z0 / self.l) #waarom gedeeld door 4?
         
         # 2. Shear stress perturbation
         #-----------------------------
-        # According to Duran
+        # According to Duran (2007)
         dtaux_t = hs * kx**2 / k * 2 / ul**2 * \
                   (-1 + (2 * np.log(l/self.z0) + k**2/kx**2) * sigma * \
                    scipy.special.kv(1, 2 * sigma) / scipy.special.kv(0, 2 * sigma))
         dtauy_t = hs * kx * ky / k * 2 / ul**2 * \
                   2 * np.sqrt(2) * sigma * scipy.special.kv(1, 2 * np.sqrt(2) * sigma)
-                  
         
         self.igrid['dtaux'] = np.real(np.fft.ifft2(dtaux_t))
         self.igrid['dtauy'] = np.real(np.fft.ifft2(dtauy_t))
-        
-        self.igrid['dtaux'][0,:] = self.igrid['dtaux'][1,:]
-        self.igrid['dtaux'][-1,:] = self.igrid['dtaux'][-2,:]
-        self.igrid['dtaux'][:,0] = self.igrid['dtaux'][:,1]
-        self.igrid['dtaux'][:,-1] = self.igrid['dtaux'][:,-2]
-        
-        self.igrid['dtauy'][0,:] = self.igrid['dtauy'][1,:]
-        self.igrid['dtauy'][-1,:] = self.igrid['dtauy'][-2,:]
-        self.igrid['dtauy'][:,0] = self.igrid['dtauy'][:,1]
-        self.igrid['dtauy'][:,-1] = self.igrid['dtauy'][:,-2]
-        
-        return hs, hsnofilter
-        
         
 #    def set_computational_grid(self):
 #        '''Define computational grid
@@ -447,7 +426,7 @@ class WindShear:
         return 1. / (1. + np.exp(-(self.buffer_width-x) / self.buffer_relaxation))
         
 
-    def filter_highfrequenies(self, kx, ky, hs, nfilter=(1, 100), p=.01):
+    def filter_highfrequenies(self, kx, ky, hs, nfilter=(1, 2), p=.01):
         '''Filter high frequencies from a 2D spectrum
 
         A logistic sigmoid filter is used to taper higher frequencies
@@ -477,8 +456,6 @@ class WindShear:
 
         '''
         
-        hsnofilter = hs
-        
         if nfilter is not None:
             n1 = np.min(nfilter)
             n2 = np.max(nfilter)
@@ -490,7 +467,7 @@ class WindShear:
             f2 = 1. / (1. + np.exp(-(py + n1 - n2) / s2))
             hs *= f1 * f2
 
-        return hs, hsnofilter  
+        return hs  
     
                                                                                                                                 
     def plot(self, ax=None, cmap='Reds', stride=10, computational_grid=False, **kwargs):

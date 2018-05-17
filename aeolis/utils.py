@@ -28,7 +28,6 @@ The Netherlands                  The Netherlands
 import re
 import numpy as np
 
-
 def isiterable(x):
     '''Check if variable is iterable'''
 

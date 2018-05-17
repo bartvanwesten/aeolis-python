@@ -322,6 +322,7 @@ def compute_roughness(s, p):
     for i in range(nf):
         ix = (s['tau'] <= s['uth'][:,:,i]).flatten()
         gd[ix] += mass[ix,i]
+#    ix = (mass.sum(axis=-1) > 1e-10)
     gd /= mass.sum(axis=-1)
 
     # compute inverse of shear stress ratio
@@ -335,12 +336,12 @@ def compute_roughness(s, p):
 
 def non_erodible(s, p): #NEW!
     
-    # Define non-erodible layer
+#    # Define non-erodible layer
     s['zne'][:,:] = p['ne_file']
-    
+#    
     # Increase velocity threshold infinite
-    s['uth'][s['zb']<=s['zne']] = np.inf
-    #[:,:,0]
+    s['uth'][s['zb']<=s['zne']] *= np.inf
+    
     return s
 
 

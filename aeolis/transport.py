@@ -79,7 +79,7 @@ def equilibrium(s, p):
         # equilibrium concentration
         
         s['Cu'] = np.zeros(uw.shape)
-
+        
         if p['method_transport'].lower() == 'bagnold':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
                                      * (tau[ix] - s['uth'][ix])**3 / s['uu'][ix])
@@ -162,3 +162,21 @@ def renormalize_weights(w, ix):
     w = normalize(w, axis=2, fill=1./w.shape[2])
 
     return w
+
+def saturation_factor(s,p):
+    
+    tau = s['tauTs'][:,:,np.newaxis].repeat(p['nfractions'], axis=2)
+    
+#    alpha = 0.35
+    gamma = 0.2
+#    g = 9.81
+    
+    s['uth0'][:,:,:] = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'])
+    s['tauth'] = p['rhoa']*s['uth0']**2
+    s['satfac'] = s['tauth'] / (gamma*(tau - s['tauth']))
+
+    s['Ts'] = p['T']*s['satfac'] #((2*alpha*s['uu'])/(g))
+    s['Ts'] = np.maximum(np.minimum(s['Ts'],3.0),0.1)
+    
+    
+    return s

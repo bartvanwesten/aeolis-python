@@ -42,6 +42,30 @@ Missing parts:
     - Frequency filter in y-direction
     - Cutting of separation bubble of new dune, only one separation bubble for each slice in y-direction.
 '''
+def separation_shear(s,p):
+    
+    #Separation bubble
+    s['tau'] = s['taunosep']*s['zsepdelta']
+    
+    return s
+
+def separation_shear_Ts(s,p):
+    
+    #Separation bubble
+    
+#    print(s['zsepdelta'])
+    s['zsepdelta2'] = 0.
+    s['zsepdelta2'] += s['zsepdelta']
+    
+    s['zsepdelta2'][:,1:]-=(s['zsepdelta'][:,:-1]<1.)*(s['zsepdelta'][:,1:]>0.)
+#    s['zsepdelta2'][:,1:]-=(s['zsepdelta'][:,:-1]<1.)*(s['zsepdelta'][:,1:]>0.)
+    
+    s['zsepdelta2'] = np.maximum(s['zsepdelta2'],0.)
+#    s['zsepdelta'][:,:-2]+=(s['zsepdelta'][:,2:]==1.)*(s['zsepdelta'][:,:-2]==0.)
+    
+    s['tauTs'] = s['tauTs']*s['zsepdelta2'] + 0.41 * (s['zsepdelta2']<1.) # SHOULD BE TAU 0
+    
+    return s
 
 def separation(s, p):
     
@@ -52,13 +76,14 @@ def separation(s, p):
     x = s['x']
     z = s['zb']
     dx = x[0,1]-x[0,0]
-    zmin = np.min(z)
-    h = s['zb'] - zmin
+    
+#    print(np.min(z))
+
     
     # Calculate delta for relation separation bubble and shear stress
     
     # ACCORDING CDM
-    m_tau_sepbub = 0.05 # WHAT IS THIS?
+    m_tau_sepbub = 0.05
     slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
     delta = 1./(slope*m_tau_sepbub)
     
@@ -116,9 +141,14 @@ def separation(s, p):
     s['stall']=stall
     s['bubble']=bubble
     
+    zmin = np.zeros(ny)
+    
     # Walk through all separation bubbles and determine polynoms
     
     for j in range(0,ny):
+        
+        zmin[j] = np.min(z[j,:])
+        h = s['zb'] - zmin[j]
         
         for i in range(0,nx):
                 
@@ -152,17 +182,17 @@ def separation(s, p):
 
                 h = poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h)
                 
+                s['zsep'][j,:] += zmin[j]
+                
 #                zsepcrit[j, i:k_max] = s['zsep'][j, i:k_max] - s['zb'][j, i:k_max]
 #                
 #                if np.maximum(zsepcrit[j, i:k_max]) < 2.:
 #                    s['zsep'][j, i:k_max] = 0.
     
-    s['zsep'] += zmin
+#    s['zsep'] += zmin
     s['zsepdelta'] = np.minimum(np.maximum(1. - delta * (s['zsep'] - s['zb']),
                      np.zeros((ny, nx))),
                      np.zeros((ny, nx)) + 1)
-    
-    
 
     return s
 

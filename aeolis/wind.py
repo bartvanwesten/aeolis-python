@@ -119,11 +119,13 @@ def interpolate(s, p, t):
     s['tau'] = get_velocity_at_height(s['uw'], p['h'], p['k'])
     s['taus'] = get_velocity_at_height(s['uws'], p['h'], p['k'])
     s['taun'] = get_velocity_at_height(s['uwn'], p['h'], p['k'])
-
-    # compute shear velocity field
+    
+    return s
+    
+def shear(s,p):
+    
     if 'shear' in s.keys():
         
-        s = aeolis.separation.separation(s, p)
         s['zshear'] = np.maximum(s['zb'], s['zsep'])
         
         s['shear'].set_topo(s['zshear'])
@@ -132,13 +134,10 @@ def interpolate(s, p, t):
         
         s['dtaus'], s['dtaun'] = s['shear'].get_shear()
         s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
-        s['tau'] = np.hypot(s['taus'], s['taun'])
         
-        s['hs0'], s['hs1'] = s['shear'].get_hs()
-        
-    #Separation bubble
-    s = aeolis.separation.separation(s, p)
-    s['tau'] *= s['zsepdelta']
+        #hypot
+        s['taunosep'] = np.hypot(s['taus'], s['taun'])
+#        s['tau'] = np.hypot(s['taus'], s['taun'])
     
     return s
 
@@ -171,3 +170,13 @@ def get_velocity_at_height(u, z, z0, z1=None):
         return tau
     else:
         return tau * np.log(z1 / z0) / .41
+    
+def filter_low(s, p, par, direction, Cut):
+    
+    parfft = np.fft.fft2(s[par])
+    dk = 2.0 * np.pi / np.max(s[direction])
+    fac = np.exp(-(dk*s[direction])**2./(2.*Cut**2.))
+    parfft *= fac
+    s[par] = np.maximum(np.real(np.fft.ifft2(parfft)),0)
+    
+    return s

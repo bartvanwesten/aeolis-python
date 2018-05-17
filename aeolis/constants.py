@@ -32,6 +32,7 @@ INITIAL_STATE = {
         'uws',                              # [m/s] Component of wind velocity in s-direction
         'uwn',                              # [m/s] Component of wind velocity in n-direction
         'tau',                              # [m/s] Wind shear velocity
+        'taunosep',                         # NEW!
         'taus',                             # [m/s] Component of wind shear velocity in x-direction
         'taun',                             # [m/s] Component of wind shear velocity in y-direction
         'dtaus',                            # [-] Component of the wind shear perturbation in x-direction
@@ -83,10 +84,18 @@ MODEL_STATE = {
         'bubble',                           # TEMP!
         'stall',                            # TEMP!
         'zsepnofil',                        # TEMP!
-        'dz',                              # TEMP!
-        'hs0',
-        'hs1',
+        'dz',                               # TEMP!
         'zshear',
+        'zf',                               # NEW! Fixer layer according to Pieter
+        'dvegrho',                          # NEW!
+        'vegrho',                           # NEW!
+        'germinate',                        # NEW!
+        'dzdt',                             # NEW!
+        'vegfac',                           # NEW!
+        'dtaudx1',
+        'dtaudx2',
+        'tauTs',
+        'zsepdelta2',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -100,9 +109,13 @@ MODEL_STATE = {
         'w_air',                            # [-] Weights of sediment fractions based on grain size distribution in the air
         'w_bed',                            # [-] Weights of sediment fractions based on grain size distribution in the bed
         'uth',                              # [m/s] Shear velocity threshold
+        'uth0',                             # NEW! [m/s] Shear velocity threshold
         'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
         'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
         'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
+        'tauth',                            # NEW!
+        'satfac',                           # NEW!
+        'Ts',                               # NEW! Dynamic adaption time
     ),
     ('ny','nx','nlayers') : (
         'thlyr',                            # [m] Bed composition layer thickness
@@ -130,8 +143,9 @@ DEFAULT_CONFIG = {
     'process_meteo'       : False,              # Enable the process of meteo
     'process_salt'        : False,              # Enable the process of salt
     'process_humidity'    : False,              # Enable the process of humidity
-    'process_avalanche'   : True,              # NEW! Enable the process of avalanching
+    'process_avalanche'   : True,               # NEW! Enable the process of avalanching
     'process_inertia'     : True,               # NEW!
+    'process_separation'  : True,               # NEW! Enable the separation bubble
     'th_grainsize'        : True,               # Enable wind velocity threshold based on grainsize
     'th_bedslope'         : False,              # Enable wind velocity threshold based on bedslope
     'th_moisture'         : True,               # Enable wind velocity threshold based on moisture
@@ -196,7 +210,7 @@ DEFAULT_CONFIG = {
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
     'Mcr_dyn'             : 33.,                # [-] NEW! 
-    'M_sep'               : 14.,                # [-] NEW! separationcrit = double: 30 deg
+    'M_sep'               : 14.,                # [-] NEW!
     'M_dSlope'            : 0.25,               # [-] NEW!
     'm_kCut'              : 2.0,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
@@ -210,6 +224,7 @@ DEFAULT_CONFIG = {
     'refdate'             : '1970-01-01 00:00', # [-] Reference datetime in netCDF output
     'callback'            : None,               # Reference to callback function (e.g. example/callback.py':callback)
     'wind_convention'     : 'cartesian',        # Convention used for the wind direction in the input files
+#    'fixed_layer'         : -0.5,                 # NEW! Fixed layer according to Pieter
 }
 
 

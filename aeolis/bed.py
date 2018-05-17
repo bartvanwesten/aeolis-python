@@ -180,7 +180,14 @@ def update(s, p):
         
     #TEMP + manual: add sediment to boundary
     
-#    s['zb'][:,3] = 0.05
+#    q = 0.00001  # [m3/m/s]
+#    supcells = 5
+#    dx = 1. # [m]
+#    dt = p['dt']
+#    
+#    s['zb'][:,0:supcells] += q*dt/(dx*supcells)
+#    
+#    s['zb'][:,:3] = 0.
 
     return s
 
