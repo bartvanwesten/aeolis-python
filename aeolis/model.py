@@ -199,7 +199,7 @@ class AeoLiS(IBmi):
         self.s = aeolis.wind.initialize(self.s, self.p)
         
         # initialize Ts
-        self.s['Ts'] += self.p['T']
+#        self.s['uu'] += self.p['T']
         
         # initialize vegetation model
 #        self.s = aeolis.vegetation.initialize(self.s, self.p)
@@ -236,7 +236,7 @@ class AeoLiS(IBmi):
         # store previous state
         self.l = self.s.copy()
         # TEMP! Copy + Filter
-        self.s['zbold']=self.s['zb'].copy()
+#        self.s['zbold']=self.s['zb'].copy()
         
         # interpolate wind time series
         self.s = aeolis.wind.interpolate(self.s, self.p, self.t)
@@ -244,24 +244,11 @@ class AeoLiS(IBmi):
         # calculate separation bubble
         self.s = aeolis.separation.separation(self.s, self.p)
         
-        # calculate shear stresses + filter
+        # calculate shear stresses over the combined bedlevel and separation bubble
         self.s = aeolis.wind.shear(self.s, self.p)
-        self.s['taunosep']=np.minimum(self.s['taunosep'],0.8)
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'taunosep', 'x', 8.0)
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'taunosep', 'y', 8.0)
         
         # include effect of separation bubble on shear stresses
         self.s = aeolis.separation.separation_shear(self.s, self.p)
-        self.s['tau']=np.minimum(self.s['tau'],0.8)
-        
-#        self.s['dtaudx1'][:,:-1] = np.abs(self.s['tau'][:,:-1]-self.s['tau'][:,1:])/self.s['tau'][1,1]
-#        print(np.sum(self.s['dtaudx1'])/self.p['ny'])
-        
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'tau', 'x', 15.0)
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'tau', 'y', 15.0)
-        
-#        self.s['dtaudx2'][:,:-1] = np.abs(self.s['tau'][:,:-1]-self.s['tau'][:,1:])/self.s['tau'][1,1]
-#        print(np.sum(self.s['dtaudx2'])/self.p['ny'])
 
         # determine optimal time step
         if not self.set_timestep(dt):
@@ -277,21 +264,15 @@ class AeoLiS(IBmi):
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
         
-        #compute saturation factor, saturation time and equilibrium transport
+        # compute shear velocity stress and grain speed
+        self.s = aeolis.transport.grainspeed(self.s, self.p)
+        
+        #compute equilibrium transport
         self.s = aeolis.transport.equilibrium(self.s, self.p)
         
-        # calculate saturation_factor
-        self.s['tauTs']=np.minimum(self.s['taunosep'],0.8)
-        self.s['tauTs']=np.maximum(self.s['taunosep'],0.2)
+        # calculate saturation time
         self.s = aeolis.separation.separation_shear_Ts(self.s, self.p)
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'tauTs', 'x', 15.0)
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'tauTs', 'y', 15.0)
         self.s = aeolis.transport.saturation_factor(self.s, self.p)
-        self.s['Ts']=np.minimum(self.s['Ts'],1.0)
-        self.s['Ts']=np.maximum(self.s['Ts'],0.2)
-        
-#        self.s = aeolis.wind.filter_low_nf(self.s, self.p, 'Ts', 'x', 5.0)
-#        self.s = aeolis.wind.filter_low_nf(self.s, self.p, 'Ts', 'y', 10.0)
         
         #compute vegetation shear
 #        self.s = aeolis.vegetation.vegshear(self.s, self.p)
@@ -310,8 +291,8 @@ class AeoLiS(IBmi):
         self.s = aeolis.bed.update(self.s, self.p)
         
         # avalanching
-        if self.p['_time']/self.p['dt'] % 10 == 0:
-            self.s = aeolis.bed.avalanche(self.s, self.p)
+#        if self.p['_time']/self.p['dt'] % 1 == 0:
+        self.s = aeolis.bed.avalanche(self.s, self.p)
             
         # grow vegetation
 #        self.s = aeolis.vegetation.germinate(self.s, self.p, self.l, self.t)
@@ -694,7 +675,6 @@ class AeoLiS(IBmi):
         transport.renormalize_weights
 
         '''
-
         l = self.l
         s = self.s
         p = self.p
@@ -718,34 +698,50 @@ class AeoLiS(IBmi):
                         maxdrop=(l['uw']-s['uw']).max(),
                         time=self.t,
                         dt=self.dt)
+        
+        #define velocity fluxes
+        ufs = np.zeros((p['ny']+1,p['nx']+1))
+        ufs[:,1:] = 0.5*s['uus'][:,:-1] + 0.5*s['uus'][:,1:]
+        ufn = np.zeros((p['ny']+1,p['nx']+1))
+        ufn[1:,:] = 0.5*s['uun'][:-1,:] + 0.5*s['uun'][1:,:]
+        #boundary values
+        ufs[:,0]  = s['uus'][:,0]
+        ufs[:,-1] = s['uun'][:,-1]
+        
+        if p['boundary_lateral'] == 'circular':
+            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
+            ufn[-1,:] = ufn[0,:]
+        else:
+            ufn[0,:]  = s['ugn'][0,:]
+            ufn[-1,:] = s['ugn'][-1,:]
 
         # define matrix coefficients to solve linear system of equations
-        Cs = self.dt * s['dnz'] * s['dsdnzi'] * s['uws']
-        Cn = self.dt * s['dsz'] * s['dsdnzi'] * s['uwn']
-        Ti = self.dt / p['T']
+        Cs = self.dt * s['dnz'] * s['dsdnzi'] * ufs
+        Cn = self.dt * s['dsz'] * s['dsdnzi'] * ufn
+        Ti = self.dt / s['Ts']
 
         beta = abs(beta)
         if beta >= 1.:
             # define upwind direction
-            ixs = np.asarray(s['uws'] >= 0., dtype=np.float)
-            ixn = np.asarray(s['uwn'] >= 0., dtype=np.float)
+            ixs = np.asarray(ufs >= 0., dtype=np.float)
+            ixn = np.asarray(ufn >= 0., dtype=np.float)
             sgs = 2. * ixs - 1.
             sgn = 2. * ixn - 1.
         else:
             # or centralizing weights
-            ixs = beta + np.zeros(s['uw'])
-            ixn = beta + np.zeros(s['uw'])
-            sgs = np.zeros(s['uw'])
-            sgn = np.zeros(s['uw'])
+            ixs = beta + np.zeros(s['uu'])
+            ixn = beta + np.zeros(s['uu'])
+            sgs = np.zeros(s['uu'])
+            sgn = np.zeros(s['uu'])
 
         # initialize matrix diagonals
-        A0 = np.zeros(s['uw'].shape)
-        Apx = np.zeros(s['uw'].shape)
-        Ap1 = np.zeros(s['uw'].shape)
-        Ap2 = np.zeros(s['uw'].shape)
-        Amx = np.zeros(s['uw'].shape)
-        Am1 = np.zeros(s['uw'].shape)
-        Am2 = np.zeros(s['uw'].shape)
+        A0 = np.zeros(s['uu'].shape)
+        Apx = np.zeros(s['uu'].shape)
+        Ap1 = np.zeros(s['uu'].shape)
+        Ap2 = np.zeros(s['uu'].shape)
+        Amx = np.zeros(s['uu'].shape)
+        Am1 = np.zeros(s['uu'].shape)
+        Am2 = np.zeros(s['uu'].shape)
 
         # populate matrix diagonals
         A0 = 1. + (sgs * Cs + sgn * Cn + Ti) * alpha
@@ -842,13 +838,13 @@ class AeoLiS(IBmi):
                 self._count('matrixsolve')
 
                 # create the right hand side of the linear system
-                y_i = np.zeros(s['uw'].shape)
+                y_i = np.zeros(s['uu'].shape)
                 y_i[:,1:-1] = l['Ct'][:,1:-1,i] \
-                    + alpha * w[:,1:-1,i] * s['Cu'][:,1:-1,i] * Ti \
+                    + alpha * w[:,1:-1,i] * s['Cu'][:,1:-1,i] * Ti[:,1:-1] \
                     + (1. - alpha) * (
-                        l['w'][:,1:-1,i] * l['Cu'][:,1:-1,i] * Ti \
+                        l['w'][:,1:-1,i] * l['Cu'][:,1:-1,i] * Ti[:,1:-1] \
                         - (sgs[:,1:-1] * Cs[:,1:-1] + \
-                           sgn[:,1:-1] * Cn[:,1:-1] + Ti) * l['Ct'][:,1:-1,i] \
+                           sgn[:,1:-1] * Cn[:,1:-1] + Ti[:,1:-1]) * l['Ct'][:,1:-1,i] \
                         + ixs[:,1:-1] * Cs[:,1:-1] * l['Ct'][:,:-2,i] \
                         - (1. - ixs[:,1:-1]) * Cs[:,1:-1] * l['Ct'][:,2:,i] \
                         + ixn[:,1:-1] * Cn[:,1:-1] * np.roll(l['Ct'][:,1:-1,i],
@@ -879,7 +875,9 @@ class AeoLiS(IBmi):
                 Cu_i = s['Cu'][:,:,i].flatten()
                 mass_i = s['mass'][:,:,0,i].flatten()
                 w_i = w[:,:,i].flatten()
-                pickup_i = (w_i * Cu_i - Ct_i) / p['T'] * self.dt
+                Ts_i = s['Ts'][:,:].flatten()
+                
+                pickup_i = (w_i * Cu_i - Ct_i) / Ts_i * self.dt
                 deficit_i = pickup_i - mass_i
                 ix = (deficit_i > p['max_error']) \
                      & (w_i * Cu_i > 0.)
@@ -896,7 +894,7 @@ class AeoLiS(IBmi):
                     pickup_i = np.minimum(pickup_i, mass_i)
                     break
                 else:
-                    w_i[ix] = (mass_i[ix] * p['T'] / self.dt \
+                    w_i[ix] = (mass_i[ix] * Ts_i[ix] / self.dt \
                                + Ct_i[ix]) / Cu_i[ix]
                     w[:,:,i] = w_i.reshape(y_i.shape)
 
@@ -936,8 +934,8 @@ class AeoLiS(IBmi):
 #                                      minweight=np.sum(w, axis=-1).min(),
 #                                      **logprops))
 
-        qs = Ct * s['uws'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
-        qn = Ct * s['uwn'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
+        qs = Ct * s['uus'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
+        qn = Ct * s['uun'].reshape(Ct[:,:,:1].shape).repeat(p['nfractions'], axis=-1)
                     
         return dict(Ct=Ct,
                     qs=qs,
@@ -995,6 +993,8 @@ class AeoLiS(IBmi):
         qn = s['qn'].copy()
         pickup = s['pickup'].copy()
         
+        Ts = s['Ts']
+        
         qflag = p['process_inertia']
 
         # compute transport weights for all sediment fractions
@@ -1017,14 +1017,26 @@ class AeoLiS(IBmi):
 
         # to be removed: use equilibrium grain velocity field for now
         # ! be aware: this is approx 1.25 m/s (much smaller than wind velocity)
-        ix = Ct > p['max_error']
+#        ix = Ct > p['max_error']
         ugs = s['uus'].copy()
         ugn = s['uun'].copy()
+        s['ugs'] = s['uus'].copy()
+        s['ugn'] = s['uun'].copy()
+        
+#        #TEMP!
+#        ug = np.zeros(s['uus'].shape)
+#        ugs = np.zeros(s['uus'].shape)
+#        ugn = np.zeros(s['uus'].shape)
+#        ugs[:,:,:] = 1.25 # m/s
+#        ugn[:,:,:] = 0. #m/s
+#        s['ugs'][:,:] = ugs[:,:,0]
+#        s['ugn'][:,:] = ugn[:,:,0]
+        
         # if qflag : # te gevaarlijk voor kleine Ct, daarom commented
             # ugs[ix] = qs[ix] / Ct[ix] #let op want voor kleine Ct kan dit gevaarlijk zijn...
             # ugn[ix] = qn[ix] / Ct[ix]
-        s['ugs'] = np.sum(w * ugs,axis=-1) #slechts 1 transportsnelheid voor alle fracties
-        s['ugn'] = np.sum(w * ugn,axis=-1)
+#        s['ugs'] = np.sum(w * ugs,axis=-1) #slechts 1 transportsnelheid voor alle fracties
+#        s['ugn'] = np.sum(w * ugn,axis=-1)
 
         #alternative (as in original aeolis model): set grain velocity to wind velocity
         #s['ugs'] = s['uws']
@@ -1064,7 +1076,7 @@ class AeoLiS(IBmi):
 
         # populate matrix diagonals #ADJUSTED TO NEW GRIDPARAMS, CHECK IF CORRECT (BART)!
         A0         += s['dsdnz'] / self.dt                                        #time derivative
-        A0         += s['dsdnz'] / p['T']                                 * alpha #source term
+        A0         += s['dsdnz'] / Ts                                     * alpha #source term
         A0[:,1:]   -= s['dnz'][:,1:]  * ufs[:,1:-1] * (1. - ixfs[:,1:-1]) * alpha #lower x-face
         Am1[:,1:]  -= s['dnz'][:,1:]  * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #lower x-face
         A0[:,:-1]  += s['dnz'][:,:-1] * ufs[:,1:-1] *       ixfs[:,1:-1]  * alpha #upper x-face
@@ -1080,6 +1092,9 @@ class AeoLiS(IBmi):
             #nothing to be done
             pass
         elif p['boundary_offshore'] == 'saturatedflux':
+            #nothing to be done
+            pass
+        elif p['boundary_offshore'] == 'input':
             #nothing to be done
             pass
         elif p['boundary_offshore'] == 'constant':
@@ -1243,10 +1258,10 @@ class AeoLiS(IBmi):
                         qnxfn_i[-1,:] = qnxfn_i[0,:]                   
                         
                 # calculate pickup
-                D_i = s['dsdnz'] / p['T'] * ( alpha * Ct[:,:,i]  \
+                D_i = s['dsdnz'] / Ts * ( alpha * Ct[:,:,i]  \
                                             + (1. - alpha ) * l['Ct'][:,:,i] )
-                A_i = s['dsdnz'] / p['T'] * s['mass'][:,:,0,i] + D_i # Availability
-                U_i = s['dsdnz'] / p['T'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
+                A_i = s['dsdnz'] / Ts * s['mass'][:,:,0,i] + D_i # Availability
+                U_i = s['dsdnz'] / Ts * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
                                             + (1. - alpha ) * l['w'][:,:,i] * l['Cu'][:,:,i] )
                 #deficit_i = E_i - A_i
                 E_i= np.minimum(U_i, A_i)
@@ -1267,7 +1282,7 @@ class AeoLiS(IBmi):
                     yqs_i = np.zeros(s['uw'].shape)
                     yqs_i         -= s['dsdnz'] / self.dt * ( qs[:,:,i] \
                                                             - l['qs'][:,:,i] )      #time derivative
-                    yqs_i         += s['uus'][:,:,i] * E_i - ugs[:,:,i] * D_i       #source term
+                    yqs_i         += s['uus'][:,:] * E_i - ugs[:,:] * D_i       #source term
                     yqs_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * qsxfs_i[:,1:-1] #lower x-face
                     yqs_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * qsxfs_i[:,1:-1] #upper x-face
                     yqs_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * qsxfn_i[1:-1,:] #lower y-face
@@ -1276,7 +1291,7 @@ class AeoLiS(IBmi):
                     yqn_i = np.zeros(s['uw'].shape)
                     yqn_i         -= s['dsdnz'] / self.dt * ( qn[:,:,i] \
                                                             - l['qn'][:,:,i] )      #time derivative
-                    yqn_i         += s['uun'][:,:,i] * E_i - ugn[:,:,i] * D_i       #source term
+                    yqn_i         += s['uun'][:,:] * E_i - ugn[:,:] * D_i       #source term
                     yqn_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * qnxfs_i[:,1:-1] #lower x-face
                     yqn_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * qnxfs_i[:,1:-1] #upper x-face
                     yqn_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * qnxfn_i[1:-1,:] #lower y-face
@@ -1286,13 +1301,15 @@ class AeoLiS(IBmi):
                 # offshore boundary (i=0)
                 if p['boundary_offshore'] == 'noflux':
                     pass
+                elif p['boundary_offshore'] == 'input':
+                    yCt_i[:,0]   += s['dnz'][:,0] * p['sedimentinput'] #units still to be found
                 elif p['boundary_offshore'] == 'saturatedflux':
                     yCt_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] #lower x-face
                     if qflag :
                         yqs_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
-                                         * s['uus'][:,0,i]
+                                         * s['uus'][:,0]
                         yqn_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
-                                         * s['uun'][:,0,i]
+                                         * s['uun'][:,0]
                 elif p['boundary_offshore'] == 'constant':
                     #constant sediment concentration (Ct) in the air (for now = 0)
                     yCt_i[:,0]   = 0.
@@ -1316,9 +1333,9 @@ class AeoLiS(IBmi):
                     yCt_i[:,-1]   += s['dnz'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] #upper x-face
                     if qflag :
                         yqs_i[:,-1]   += s['dnz'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
-                                         * s['uus'][:,-1,i]
+                                         * s['uus'][:,-1]
                         yqn_i[:,-1]   += s['dnz'][:,-1]  * ufs[:,-1] * s['Cu'][:,-1,i] \
-                                         * s['uun'][:,-1,i]
+                                         * s['uun'][:,-1]
                 elif p['boundary_onshore'] == 'constant':
                     #constant sediment concentration (Ct) in the air (for now = 0)
                     yCt_i[:,-1]   = 0.
@@ -1339,19 +1356,19 @@ class AeoLiS(IBmi):
                 if p['boundary_lateral'] == 'noflux':
                     #nothing to be done
                     pass
-                elif p['boundary_lateral'] == 'saturatedflux':
+                elif p['boundary_lateral'] == 'saturated':
                     yCt_i[:,0]   += s['dsz'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  #lower y-face
                     if qflag :
                         yqs_i[:,0]   += s['dsz'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
-                                         * s['uus'][0,:,i]
+                                         * s['uus'][0,:]
                         yqn_i[:,0]   += s['dsz'][0:,:] * ufn[0,:]  * s['Cu'][0,:,i]  \
-                                         * s['uun'][0,:,i]
+                                         * s['uun'][0,:]
                     yCt_i[:,-1]  -= s['dsz'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] #upper y-face
                     if qflag :
                         yqs_i[:,-1]  -= s['dsz'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
-                                         * s['uus'][-1,:,i]
+                                         * s['uus'][-1,:]
                         yqn_i[:,-1]  -= s['dsz'][-1,:] * ufn[-1,:] * s['Cu'][-1,:,i] \
-                                         * s['uun'][-1,:,i]
+                                         * s['uun'][-1,:]
                 elif p['boundary_lateral'] == 'constant':
                     #constant sediment concentration (hC) in the air
                     yCt_i[0,:]  = 0.
@@ -1410,7 +1427,7 @@ class AeoLiS(IBmi):
                 Cu_i = s['Cu'][:,:,i].flatten()
                 mass_i = s['mass'][:,:,0,i].flatten()
                 w_i = w[:,:,i].flatten()
-                Ts_i = s['Ts'][:,:,i].flatten()
+                Ts_i = Ts.flatten()
                 
                 pickup_i = (w_i * Cu_i - Ct_i) / Ts_i * self.dt # Dit klopt niet! enkel geldig bij backward euler
                 deficit_i = pickup_i - mass_i
@@ -1435,7 +1452,7 @@ class AeoLiS(IBmi):
                     pickup_i = np.minimum(pickup_i, mass_i)
                     break
                 else:
-                    w_i[ix] = (mass_i[ix] * p['T'] / self.dt \
+                    w_i[ix] = (mass_i[ix] * Ts_i[i] / self.dt \
                                + Ct_i[ix]) / Cu_i[ix]
                     w[:,:,i] = w_i.reshape(yCt_i.shape)
 

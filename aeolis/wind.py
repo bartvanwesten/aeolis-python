@@ -116,28 +116,42 @@ def interpolate(s, p, t):
     s['uwn'] = get_velocity_at_height(s['uwn'], p['z'], p['k'], p['h'])
 
     # compute shear velocity
-    s['tau'] = get_velocity_at_height(s['uw'], p['h'], p['k'])
-    s['taus'] = get_velocity_at_height(s['uws'], p['h'], p['k'])
-    s['taun'] = get_velocity_at_height(s['uwn'], p['h'], p['k'])
+    s['ustar'] = get_velocity_at_height(s['uw'], p['h'], p['k'])
+    s['ustars'] = get_velocity_at_height(s['uws'], p['h'], p['k'])
+    s['ustarn'] = get_velocity_at_height(s['uwn'], p['h'], p['k'])
+    
+    s['tau'] = p['rhoa']*s['ustar']**2
+    s['taus'] = p['rhoa']*s['ustars']**2
+    s['taun'] = p['rhoa']*s['ustarn']**2
     
     return s
     
 def shear(s,p):
     
-    if 'shear' in s.keys():
+    if 'shear' in s.keys() and p['process_shear']:
         
-        s['zshear'] = np.maximum(s['zb'], s['zsep'])
+        s['zshear'] = np.maximum(s['zb'],s['zsepshear'])
         
-        s['shear'].set_topo(s['zshear'])
+        s['shear'].set_topo(s['zshear']) #zshear
         s['shear'](u0=s['uw'][0,0],
                    udir=s['udir'][0,0])
         
         s['dtaus'], s['dtaun'] = s['shear'].get_shear()
-        s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
+        s['taus'], s['taun'],s['tau0'] = s['shear'].add_shear(s['taus'], s['taun'])
+        
+        # set minimum of taus to zero
+        
+        s['taus']=np.maximum(s['taus'],0.)
+        
+        # solve problems at offshore boundaries
+        
+#        s['taus'][:,0] = s['tau0'][:,0]
+#        s['taun'][:,0] = 0.
+        
+        s['ustar0'] = np.sqrt(s['tau0']/p['rhoa'])
         
         #hypot
-        s['taunosep'] = np.hypot(s['taus'], s['taun'])
-#        s['tau'] = np.hypot(s['taus'], s['taun'])
+        s['tau'] = np.hypot(s['taus'], s['taun'])
     
     return s
 
@@ -171,12 +185,52 @@ def get_velocity_at_height(u, z, z0, z1=None):
     else:
         return tau * np.log(z1 / z0) / .41
     
-def filter_low(s, p, par, direction, Cut):
+def filter_low(s, p, par, direction, Cut, exp):
     
+#    if par == 'tau' or par == 'taunosep':
+#        tau0 = s['tau0']
+#        s[par]-=tau0
+        
+#        if direction=='x':
+#            for j in range(0,p['ny']):
+#                taufft = np.fft.fft(s[par][j,:])
+#                dk = 2.0 * np.pi / np.max(s[direction])
+#                fac = np.exp(-(dk*s[direction][j,:]**2.)/(2.*Cut**2.))
+#                taufft *= fac
+#                s[par][j,:] = np.real(np.fft.ifft(taufft)) + tau0[j,:]
+#                
+##                tauavg = np.average(s[par][j,2:8])
+##                tau0avg = np.average(s[par][j,:])
+##                s[par][j,:]-=0.5*(tau0avg-tauavg)
+#        else:
+#            for i in range(0,p['nx']):
+#                taufft = np.fft.fft(s[par][:,i])
+#                dk = 2.0 * np.pi / np.max(s[direction])
+#                fac = np.exp(-(dk*s[direction][:,i]**2.)/(2.*Cut**2.))
+#                taufft *= fac
+#                s[par][:,i] = np.real(np.fft.ifft(taufft)) + tau0[:,i]  
+#                
+##                tauavg = np.average(s[par][2:8,i])
+##                tau0avg = np.average(s[par][:,i])
+##                s[par][:,i]-=0.333*(tau0avg-tauavg)
+#            
+#    else:
     parfft = np.fft.fft2(s[par])
     dk = 2.0 * np.pi / np.max(s[direction])
-    fac = np.exp(-(dk*s[direction])**2./(2.*Cut**2.))
+    fac = np.exp(-(dk*s[direction]**2.)/(2.*Cut**2.))
     parfft *= fac
-    s[par] = np.maximum(np.real(np.fft.ifft2(parfft)),0)
+    s[par] = np.real(np.fft.ifft2(parfft))
+    
+    if par == 'tau' or par == 'taunosep':
+    
+        for j in range(0,p['ny']):
+            tauavg = np.average(s[par][j,:10])
+            tau0avg = np.average(s['tau0'][j,:])
+            s[par][j,:]+=(tau0avg-tauavg)
+        for i in range(0,p['nx']):
+            tauavg = np.average(s[par][:10,i])
+            tau0avg = np.average(s['tau0'][:,i])
+            s[par][:,i]+=(tau0avg-tauavg)
+
     
     return s

@@ -37,6 +37,137 @@ from aeolis.utils import *
 # initialize logger
 logger = logging.getLogger(__name__)
 
+def grainspeed(s,p):
+    '''Compute velocity threshold and grain speed according to Duran 2007 (p. 42)
+
+    Parameters
+    ----------
+    s : dict
+        Spatial grids
+    p : dict
+        Model configuration parameters
+
+    Returns
+    -------
+    dict
+        Spatial grids
+        '''
+
+    nf = p['nfractions']
+    
+    #From shear to shear velocity
+    
+    ustar = s['ustar']
+    ustars = s['ustars']
+    ustarn = s['ustarn']
+    
+#    uth0 = np.zeros(s['uth0'].shape)
+    uth0 = s['uth0'][:,:,0]
+    
+    # Collect variables # uf and d has to be improved! (BART)
+    
+    d = p['grain_size'][0]
+    srho = p['rhop']/p['rhoa']
+    g = p['g']
+    v = p['v']
+    alfa = p['alfa']
+    A = 0.95
+    B = 5.12
+    kappa = p['karman']
+
+    # Drag coefficient (Duran, 2007 -> Jimenez and Madsen, 2003)
+    
+#    Sstar = np.zeros(d.shape)
+#    Cd = np.zeros(d.shape)
+    
+    Sstar = d/(4*v)*np.sqrt(g*d*(srho-1.))
+    Cd = (4/3)*(A+np.sqrt(2*alfa)*B/Sstar) 
+    
+    # Grain settling velocity
+
+#    uf = np.zeros(d.shape)
+    uf = np.sqrt(4/(3*Cd)*(srho-1)*g*d)
+    
+    # Efficient wind velocity
+
+    r = 1. # Duran 2007, p. 33
+    c = 14./(1.+1.4*r)
+    tv = (v/g**2)**(1/3) # +- 5.38
+    
+    zm = np.zeros(ustar.shape)
+#    z0 = np.zeros(d.shape)
+    
+    zm = c * uth0 * tv  # characteristic height of the saltation layer +- 20 mm
+    z0 = d/20. # grain based roughness layer +- 10 mu m
+    z1 = 0.003 # reference height
+    
+    ueff = np.zeros(ustar.shape)
+    ueff = (uth0/kappa)*(np.log(z1/z0)+z1/zm*(ustar/uth0-1))
+    
+    # Grain speed
+    
+#    ets = np.zeros(s['ustar'].shape)
+#    etn = np.zeros(s['ustar'].shape)
+#    delhs = np.zeros(s['ustar'].shape)
+#    delhn = np.zeros(s['ustar'].shape)
+#
+#    ix = s['tau'] != 0.
+#    ets[ix] = s['taus'][ix]/s['tau'][ix]
+#    etn[ix] = s['taun'][ix]/s['tau'][ix]
+#    
+#
+#    
+#    delhs[:,:-1] = (s['zb'][:,1:]-s['zb'][:,:-1])/(s['xz'][:,1:]-s['xz'][:,:-1])
+#    delhs[:,-1] = delhs[:,-2]
+#    delhn[:-1,:] = (s['zb'][1:,:]-s['zb'][:-1,:])/(s['yz'][1:,:]-s['yz'][:-1,:])
+#    delhn[-1,:] = delhn[-2,:]
+#
+#    s['delhs'] = delhs #TEMP
+#    s['delhn'] = delhn
+#    
+#    ets = ets[:,:,np.newaxis].repeat(nf, axis=2)
+#    etn = etn[:,:,np.newaxis].repeat(nf, axis=2)
+#    delhs = delhs[:,:,np.newaxis].repeat(nf, axis=2)
+#    delhn = delhn[:,:,np.newaxis].repeat(nf, axis=2)
+#    
+#    delhn[:,:,:] = 0.
+#    
+#    As = np.zeros(ustar.shape)
+#    An = np.zeros(ustar.shape)
+#    
+#    As = np.abs(ets+2*alfa*delhs) #????
+#    An = np.abs(etn+2*alfa*delhn)
+#    
+#    s['As'] = As #TEMP
+#    s['An'] = An
+#    
+#    s['ets'] = ets
+#    s['etn'] = etn
+#
+#    s['uus'][:,:,:] = 0
+#    s['uun'][:,:,:] = 0
+#    
+#    ix = As != 0.
+#    s['uus'][ix] = (ueff[ix] - uf/(np.sqrt(2*alfa)*As[ix]))*ets[ix]-np.sqrt(2*alfa)*uf*delhs[ix]/As[ix]
+#    
+#    ix = etn != 0.
+#    s['uun'][ix] = (ueff[ix] - uf/(np.sqrt(2*alfa)*An[ix]))*etn[ix]#-np.sqrt(2*alfa)*uf*delhn[ix]/An[ix]
+#    
+#    s['uu'] = np.sqrt(s['uus']**2+s['uun']**2)
+    
+    s['uu'] = (ueff - uf/(np.sqrt(2*alfa)))
+    
+    ix = ustar != 0.
+    
+    s['uus'][ix] = s['uu'][ix]*ustars[ix]/ustar[ix]
+    s['uun'][ix] = s['uu'][ix]*ustarn[ix]/ustar[ix]
+    
+#    ix = s['uw'] != 0.
+#    
+#    s['uus'][ix] = s['uu'][ix]*s['uws'][ix]/s['uw'][ix]
+#    s['uun'][ix] = s['uu'][ix]*s['uwn'][ix]/s['uw'][ix]
+    
+    return s
 
 def equilibrium(s, p):
     '''Compute equilibrium sediment concentration following Bagnold (1937)
@@ -58,37 +189,25 @@ def equilibrium(s, p):
     if p['process_transport']:
         
         nf = p['nfractions']
-        uw = s['uw'][:,:,np.newaxis].repeat(nf, axis=2)
-        tau = s['tau'][:,:,np.newaxis].repeat(nf, axis=2)
-        taus = s['taus'][:,:,np.newaxis].repeat(nf, axis=2)
-        taun = s['taun'][:,:,np.newaxis].repeat(nf, axis=2)
-        ix = tau != 0.
-        
-        # equilibrium velocity
-        s['uu'] = np.zeros(uw.shape)
-        s['uus'] = np.zeros(uw.shape)
-        s['uun'] = np.zeros(uw.shape)
-        Lu = 2. * p['rhop'] / p['rhoa'] * p['grain_size'].reshape((1,1,-1))
-        Lu = Lu.repeat(p['ny']+1, axis=0)
-        Lu = Lu.repeat(p['nx']+1, axis=1)
-        
-        s['uu'][ix]  = Lu[ix] / p['T']
-        s['uus'][ix] = s['uu'][ix] * taus[ix] / tau[ix]
-        s['uun'][ix] = s['uu'][ix] * taun[ix] / tau[ix]
+        ustar = s['ustar'][:,:,np.newaxis].repeat(nf, axis=2)
+        uu = s['uu'][:,:,np.newaxis].repeat(nf, axis=2)
+
+
+        ix = ustar != 0.
         
         # equilibrium concentration
         
-        s['Cu'] = np.zeros(uw.shape)
+        s['Cu'] = np.zeros(ustar.shape)
         
         if p['method_transport'].lower() == 'bagnold':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (tau[ix] - s['uth'][ix])**3 / s['uu'][ix])
+                                     * (ustar[ix] - s['uth'][ix])**3 / uu[ix])
         elif p['method_transport'].lower() == 'kawamura':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (tau[ix] + s['uth'][ix])**2 * (tau[ix] - s['uth'][ix]) / s['uu'][ix])
+                                     * (ustar[ix] + s['uth'][ix])**2 * (ustar[ix] - s['uth'][ix]) / uu[ix])
         elif p['method_transport'].lower() == 'lettau':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (tau[ix] - s['uth'][ix]) * tau[ix]**2 / s['uu'][ix])
+                                     * (ustar[ix] - s['uth'][ix]) * ustar[ix]**2 / uu[ix])
         else:
             logger.log_and_raise('Unknown transport formulation [%s]' % p['method_transport'], exc=ValueError)
     
@@ -165,18 +284,42 @@ def renormalize_weights(w, ix):
 
 def saturation_factor(s,p):
     
-    tau = s['tauTs'][:,:,np.newaxis].repeat(p['nfractions'], axis=2)
+    # THIS PART HAS TO BE CHECKED (BART) - frac
     
 #    alpha = 0.35
     gamma = 0.2
-#    g = 9.81
+    g = 9.81
     
-    s['uth0'][:,:,:] = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'])
-    s['tauth'] = p['rhoa']*s['uth0']**2
-    s['satfac'] = s['tauth'] / (gamma*(tau - s['tauth']))
-
-    s['Ts'] = p['T']*s['satfac'] #((2*alpha*s['uu'])/(g))
-    s['Ts'] = np.maximum(np.minimum(s['Ts'],3.0),0.1)
+#    frac = 0.
+##    
+#    Ts_min = 0.0000001
+##    Ts_max = 25.
+#    
+#    nf = p['nfractions']
+#    
+#    mass = np.zeros(s['uu'].shape)
+#    
+#    for i in range(nf): #loop over fractions
+#        mass[:,:,i] = s['mass'][:,:,0,i]
+#        
+#        if np.any(s['uth0'][:,:,i]>s['ustar'][:,:]):
+#            mass[:,:,i] = 0.
+#            
+#    for i in range(nf):
+#        if np.any(np.max(mass[:,:,:]) == mass[:,:,i]):
+#            frac = i
+#
+#    s['uufrac'][:,:] = s['uu'][:,:,frac]
+#    s['uusfrac'][:,:] = s['uus'][:,:,frac]
+#    s['uunfrac'][:,:] = s['uun'][:,:,frac]
     
+#    uth = s['uth0'][:,:,frac]
+    
+#    s['T0'] = 2.*alpha*s['ustar']/(g*gamma)
+#    s['Ts'] = s['T0']/((s['ustar']/uth)**2.-1.)
+#    s['Ts'] = np.maximum(s['Ts'],Ts_min)
+    
+    s['Ts'] = 1.75*s['ustar']/(g*gamma) #M. Sorensen, Acta Mech., Suppl. 1, 67 1991 FIND PAPER
+    s['Ts'] = np.maximum(s['Ts'],0.01)
     
     return s

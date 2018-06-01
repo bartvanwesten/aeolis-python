@@ -32,7 +32,6 @@ INITIAL_STATE = {
         'uws',                              # [m/s] Component of wind velocity in s-direction
         'uwn',                              # [m/s] Component of wind velocity in n-direction
         'tau',                              # [m/s] Wind shear velocity
-        'taunosep',                         # NEW!
         'taus',                             # [m/s] Component of wind shear velocity in x-direction
         'taun',                             # [m/s] Component of wind shear velocity in y-direction
         'dtaus',                            # [-] Component of the wind shear perturbation in x-direction
@@ -92,14 +91,29 @@ MODEL_STATE = {
         'germinate',                        # NEW!
         'dzdt',                             # NEW!
         'vegfac',                           # NEW!
-        'dtaudx1',
-        'dtaudx2',
         'tauTs',
-        'zsepdelta2',
+        'zsep0',
+        'tau0',
+        'zsepshear',
+        'ustar',
+        'ustars',
+        'ustarn',
+        'ustar0',
+        'Ts',                               # NEW! Dynamic adaption time
+        'T0',
+        'uufrac',
+        'uusfrac',
+        'uunfrac',
+        'delhs',
+        'delhn',
+        'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
+        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
+        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
         'Ct',                               # [kg/m^2] Instantaneous sediment concentration integrated over saltation height
+        'Cuf',                              # NEW!
         'q',                                # [kg/m/s] Instantaneous sediment flux
         'qs',                               # [kg/m/s] Instantaneous sediment flux in x-direction
         'qn',                               # [kg/m/s] Instantaneous sediment flux in y-direction
@@ -109,13 +123,13 @@ MODEL_STATE = {
         'w_air',                            # [-] Weights of sediment fractions based on grain size distribution in the air
         'w_bed',                            # [-] Weights of sediment fractions based on grain size distribution in the bed
         'uth',                              # [m/s] Shear velocity threshold
+        'uthf',                             # NEW!
+        'As',
+        'An',
+        'ets',
+        'etn',
         'uth0',                             # NEW! [m/s] Shear velocity threshold
-        'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
-        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
-        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
-        'tauth',                            # NEW!
-        'satfac',                           # NEW!
-        'Ts',                               # NEW! Dynamic adaption time
+        'S',                                # NEW!
     ),
     ('ny','nx','nlayers') : (
         'thlyr',                            # [m] Bed composition layer thickness
@@ -131,7 +145,7 @@ MODEL_STATE = {
 #: AeoLiS model default configuration
 DEFAULT_CONFIG = {
     'process_wind'        : True,               # Enable the process of wind
-    'process_shear'       : False,              # Enable the process of wind shear
+    'process_shear'       : True,              # Enable the process of wind shear
     'process_tide'        : True,               # Enable the process of tides
     'process_wave'        : True,               # Enable the process of waves
     'process_runup'       : True,               # Enable the process of wave runup
@@ -210,9 +224,9 @@ DEFAULT_CONFIG = {
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
     'Mcr_dyn'             : 33.,                # [-] NEW! 
-    'M_sep'               : 14.,                # [-] NEW!
-    'M_dSlope'            : 0.25,               # [-] NEW!
-    'm_kCut'              : 2.0,                # [-] NEW!
+    'M_sep'               : 11.,                # [-] NEW!
+    'M_dSlope'            : 11.,                # [-] NEW!
+    'm_kCut'              : 2.5,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)
@@ -224,7 +238,11 @@ DEFAULT_CONFIG = {
     'refdate'             : '1970-01-01 00:00', # [-] Reference datetime in netCDF output
     'callback'            : None,               # Reference to callback function (e.g. example/callback.py':callback)
     'wind_convention'     : 'cartesian',        # Convention used for the wind direction in the input files
-#    'fixed_layer'         : -0.5,                 # NEW! Fixed layer according to Pieter
+    'alfa'                : 0.4,                # [-]relation between the vertical component of the ejection velocity with the horizontal velocity difference between the impact and ejection
+    'v'                   : 1.5e-5,             # [m2/s] kinematic velocity 
+    'karman'              : 0.41,               # [-] von Karman constant
+    'boundary_offshore_flux'       : .002,               # [kg/m/s] NEW!
+    'fixed_layer'         : 0.0,                # NEW! Fixed layer according to Pieter
 }
 
 

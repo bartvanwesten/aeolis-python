@@ -117,6 +117,9 @@ def compute_grainsize(s, p):
 
     s['uth'][:,:,:] = 1.
     s['uth'][:,:,:] *= p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'])
+    
+    s['uth0'][:,:,:] = 1.
+    s['uth0'] *= s['uth']
     return s
 
 
@@ -338,8 +341,15 @@ def non_erodible(s, p): #NEW!
     
 #    # Define non-erodible layer
     s['zne'][:,:] = p['ne_file']
+    
+#    ix = s['zb'] <= s['zne']#+0.01
+#    jx = s['zb'] >= s['zne']-0.1
+#    kx = ix*jx
 #    
-    # Increase velocity threshold infinite
+#    s['zne'][kx] = s['zb'][kx]
+#    
+    s['uthf'] = s['uth'].copy()
+    s['uthf'][s['zb']<=s['zne']] *= np.inf
     s['uth'][s['zb']<=s['zne']] *= np.inf
     
     return s

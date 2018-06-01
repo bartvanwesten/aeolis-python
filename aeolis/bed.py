@@ -177,17 +177,6 @@ def update(s, p):
         dz = dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
         s['zb'] += dz
         s['zs'] += dz
-        
-    #TEMP + manual: add sediment to boundary
-    
-#    q = 0.00001  # [m3/m/s]
-#    supcells = 5
-#    dx = 1. # [m]
-#    dt = p['dt']
-#    
-#    s['zb'][:,0:supcells] += q*dt/(dx*supcells)
-#    
-#    s['zb'][:,:3] = 0.
 
     return s
 
