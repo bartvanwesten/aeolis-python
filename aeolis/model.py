@@ -198,9 +198,6 @@ class AeoLiS(IBmi):
         # initialize wind model
         self.s = aeolis.wind.initialize(self.s, self.p)
         
-        # initialize Ts
-#        self.s['uu'] += self.p['T']
-        
         # initialize vegetation model
 #        self.s = aeolis.vegetation.initialize(self.s, self.p)
 
@@ -243,6 +240,7 @@ class AeoLiS(IBmi):
         
         # calculate separation bubble
         self.s = aeolis.separation.separation(self.s, self.p)
+#        self.s = aeolis.wind.filter_low(self.s, self.p, 'zsep', 'y', 50.0)
         
         # calculate shear stresses over the combined bedlevel and separation bubble
         self.s = aeolis.wind.shear(self.s, self.p)
@@ -291,7 +289,6 @@ class AeoLiS(IBmi):
         self.s = aeolis.bed.update(self.s, self.p)
         
         # avalanching
-#        if self.p['_time']/self.p['dt'] % 1 == 0:
         self.s = aeolis.bed.avalanche(self.s, self.p)
             
         # grow vegetation
@@ -640,7 +637,7 @@ class AeoLiS(IBmi):
         return self.solve(alpha=.5, beta=1.)
 
     
-    def solve_bas(self, alpha=.5, beta=1.):
+    def solve(self, alpha=.5, beta=1.):
         '''Implements the explicit Euler forward, implicit Euler backward and semi-implicit Crank-Nicolson numerical schemes
 
         Determines weights of sediment fractions, sediment pickup and
@@ -946,7 +943,7 @@ class AeoLiS(IBmi):
                     w_air=w_air,
                     w_bed=w_bed)
 
-    def solve(self, alpha=.5, beta=1.):
+    def solve_pieter(self, alpha=.5, beta=1.):
         '''Implements the explicit Euler forward, implicit Euler backward and semi-implicit Crank-Nicolson numerical schemes
 
         Determines weights of sediment fractions, sediment pickup and

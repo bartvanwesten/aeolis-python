@@ -145,8 +145,8 @@ def shear(s,p):
         
         # solve problems at offshore boundaries
         
-#        s['taus'][:,0] = s['tau0'][:,0]
-#        s['taun'][:,0] = 0.
+        s['taus'][:,0] = s['tau0'][:,0]
+        s['taun'][:,0] = 0.
         
         s['ustar0'] = np.sqrt(s['tau0']/p['rhoa'])
         
@@ -185,7 +185,7 @@ def get_velocity_at_height(u, z, z0, z1=None):
     else:
         return tau * np.log(z1 / z0) / .41
     
-def filter_low(s, p, par, direction, Cut, exp):
+def filter_low(s, p, par, direction, Cut):
     
 #    if par == 'tau' or par == 'taunosep':
 #        tau0 = s['tau0']

@@ -76,6 +76,7 @@ MODEL_STATE = {
         'uwx',                              # [m/s] Component of wind velocity in x-direction
         'uwy',                              # [m/s] Component of wind velocity in y-direction
         'zsep',
+        'dzsep',
         'zsepdelta',
         'ug',                               # [m/s] Grain velocity NEW!
         'ugs',                              # [m/s] Component of grain velocity in x-direction NEW!
@@ -224,9 +225,9 @@ DEFAULT_CONFIG = {
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
     'Mcr_dyn'             : 33.,                # [-] NEW! 
-    'M_sep'               : 11.,                # [-] NEW!
+    'M_sep'               : 14.,                # [-] NEW!
     'M_dSlope'            : 11.,                # [-] NEW!
-    'm_kCut'              : 2.5,                # [-] NEW!
+    'm_kCut'              : 2.0,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)
@@ -241,7 +242,7 @@ DEFAULT_CONFIG = {
     'alfa'                : 0.4,                # [-]relation between the vertical component of the ejection velocity with the horizontal velocity difference between the impact and ejection
     'v'                   : 1.5e-5,             # [m2/s] kinematic velocity 
     'karman'              : 0.41,               # [-] von Karman constant
-    'boundary_offshore_flux'       : .002,               # [kg/m/s] NEW!
+    'sedimentinput'       : .002,               # [kg/m/s] NEW!
     'fixed_layer'         : 0.0,                # NEW! Fixed layer according to Pieter
 }
 
