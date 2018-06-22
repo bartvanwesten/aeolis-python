@@ -226,16 +226,18 @@ class WindShear:
         '''
 
         tau = np.sqrt(taux**2 + tauy**2)
-        tau0 = tau
         ix = tau != 0.
 
         dtaux = self.igrid['dtaux']
         dtauy = self.igrid['dtauy']
+#        
+#        taux[ix] = tau[ix] * (taux[ix] / tau[ix] + dtaux[ix])
+#        tauy[ix] = tau[ix] * (tauy[ix] / tau[ix] + dtauy[ix])
         
-        taux[ix] = tau[ix] * (taux[ix] / tau[ix] + dtaux[ix])
-        tauy[ix] = tau[ix] * (tauy[ix] / tau[ix] + dtauy[ix])
+        taux[ix] = taux[ix] + tau[ix] * dtaux[ix]
+        tauy[ix] = tauy[ix] + tau[ix] * dtauy[ix]
 
-        return taux, tauy, tau0
+        return taux, tauy
 
 
     def set_topo(self, z):
@@ -337,8 +339,9 @@ class WindShear:
         
         hs = np.fft.fft2(g['z'])
         
-        m_kCut_hs = 20.0
+        m_kCut_hs = 50.0
         
+        # CHANGE FILTER!
         dk = 2.0 * np.pi / (np.max(g['x']))
         hs *= np.exp(-(dk*g['x'])**2./(2.*m_kCut_hs**2.))
 

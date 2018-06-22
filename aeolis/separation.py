@@ -50,33 +50,34 @@ def separation_shear(s,p):
     ny = p['ny'] + 1
     x = s['x']
     dx = x[0,1]-x[0,0]
+    nf = p['nfractions']
     
     # ACCORDING CDM
-    m_tau_sepbub = .05
+    m_tau_sepbub = .5
     slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
     delta = 1./(slope*m_tau_sepbub)
     
-    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * (s['zsep']-s['zb']),
-                 np.zeros((ny, nx))),
-                 np.zeros((ny, nx)) + 1)
-        
-    s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
-    s['ustars'] = s['ustar']*s['taus']/s['tau']
-    s['ustarn'] = s['ustar']*s['taun']/s['tau']
+    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * (s['dzsep']), 0.),1.)
     
     if p['process_separation']:
-        s['tau'] *=s['zsepdelta']
+#        s['tau'] *=s['zsepdelta']
         s['taus'] *=s['zsepdelta']
         s['taun'] *=s['zsepdelta']
         s['ustar'] *=s['zsepdelta']
         s['ustars'] *=s['zsepdelta']
         s['ustarn'] *=s['zsepdelta']
-    
-    return s
-
-def separation_shear_Ts(s,p):
-
-    s['tauTs'] = s['tau']
+        
+        zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
+        
+        s['uu'] *= zsepdelta
+        s['uus'] *= zsepdelta
+        s['uun'] *= zsepdelta
+        
+#        s['Ts'] *= s['zsepdelta']
+#        s['Ts'] = np.maximum(s['Ts'],0.01)
+        
+    s['tau'] = np.hypot(s['taus'],s['taun'])
+    s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
     
     return s
 
@@ -95,7 +96,7 @@ def separation(s, p):
         # Initialize arrays
     
         dz  = np.zeros((ny, nx))
-        ddz = np.zeros((ny, nx))
+#        ddz = np.zeros((ny, nx))
         stall = np.zeros((ny, nx))
         bubble = np.zeros((ny, nx)) 
     #    zsepcrit = np.zeros((ny, nx))
@@ -107,8 +108,8 @@ def separation(s, p):
         dz[:,:-1] = np.rad2deg(np.arctan((z[:,1:]-z[:,:-1])/dx))
         dz[:,-1] = dz[:,-2]
         
-        ddz[:,:-1] = dz[:,1:]-dz[:,:-1]
-        ddz[:,-1] = ddz[:,-2] 
+#        ddz[:,:-1] = dz[:,1:]-dz[:,:-1]
+#        ddz[:,-1] = ddz[:,-2] 
         
         s['dz']=dz
         
@@ -125,12 +126,14 @@ def separation(s, p):
                     
 #         In order to reduce the amount of separation bubbles in y-direction to one. JUST TEMP!
             for i in range(0,nx):
-                k = nx - i
-                if np.sum(bubble[j,k+1:])>0.:
-                    bubble[j, k] = 0.
+                if np.sum(bubble[j,:i-1])>0.:
+                    bubble[j, i] = 0.
                 
         s['stall']=stall
         s['bubble']=bubble
+        
+        s['zsep'][:,:] = 0.
+        s['zsepnofil'][:,:] = 0.
         
         zmin = np.zeros(ny)
         
@@ -139,11 +142,12 @@ def separation(s, p):
         for j in range(0,ny):
             
             zmin[j] = np.min(z[j,:])
-            h = s['zb'] - zmin[j]
             
             for i in range(0,nx):
                     
                 if bubble[j,i]==1:
+                    
+                    h = s['zb'] - zmin[j]
                     
                     xb = x[j,i]
                     hb = h[j,i]
@@ -152,13 +156,13 @@ def separation(s, p):
     
                     dhdx0 = (z[j,i]-z[j,i-2])/(2.*dx)
                     
-                    s['zsepnofil'][j,:] = 0.
+#                    s['zsepnofil'][j,:] = 0.
                         
-                    h = poly(s, p, i, j, hb, xb, dx, nx, dhdx0, x, h, p['M_dSlope'])
+                    h, k_max = poly(s, p, i, j, hb, xb, dx, nx, dhdx0, x, h, p['M_dSlope'])
                     
-                    s['zsepnofil'][j,:] = s['zsep'][j,:]
+#                    s['zsepnofil'][j,:] += h[j,:]
                     
-                    # Filter high frequencies
+                    # Filter high frequencies (NEW FILTER REQUIRED)
                             
                     dk = 2.0 * np.pi / (np.max(s['x']))
                     zfft[j,:] = np.fft.fft(h[j,:])
@@ -167,19 +171,23 @@ def separation(s, p):
                     
                     # First order polynom
                     
-                    s['zsep'][j,:] = 0.
-                    
                     dhdx1 = (h[j,i]-h[j,i-1])/dx
-                    h = poly(s, p, i, j, hb, xb, dx, nx, dhdx1, x, h, p['M_dSlope'])
+                    h, k_max = poly(s, p, i, j, hb, xb, dx, nx, dhdx1, x, h, p['M_dSlope'])
+                    s['zsep'][j,i:k_max] = np.maximum(h[j,i:k_max],s['zsep'][j,i:k_max])
                     s['zsep'][j,:] += zmin[j]
+                    
+                    # Area limit
+#                    area = np.sum(s['zsep'][j,i:k_max]) - np.sum(s['zb'][j,i:k_max])
+#                    if area < 2.:
+#                        s['zsep'][j,:] = zmin[j]
                     
                     # Separation bubble for shear stresses
                     
                     s['zsepshear'][j,:] = 0.
-                    h = poly2(s, p, i, j, hb, xb, dx, nx, dhdx0, x, h, 0.25)
+                    h = poly2(s, p, i, j, hb, xb, dx, nx, dhdx0, x, h, 0.8*p['M_dSlope'])
                     s['zsepshear'][j,:] += zmin[j]                    
         
-        s['dzsep'] = np.maximum(s['zsep'],s['zb']) - s['zb']
+        s['dzsep'] = np.maximum(s['zsep'] - s['zb'],0.)
 
     return s
 
@@ -201,11 +209,11 @@ def poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h, slope):
 #    if l==2.0:
 #        s['zsep'][j,i:k_max]=0.
 #    else:
-    s['zsep'][j,i:k_max] = ((a3*xs + a2) * xs + dhdx)*xs + hb
+    h[j,i:k_max] = ((a3*xs + a2) * xs + dhdx)*xs + hb
     
-    h[j,i:k_max] = s['zsep'][j,i:k_max]
+#    h[j,i:k_max] = s['zsep'][j,i:k_max]
         
-    return h
+    return h, k_max
 
 def poly2(s, p, i, j, hb, xb, dx, nx, dhdx, x, h, slope):
     

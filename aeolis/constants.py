@@ -57,6 +57,7 @@ MODEL_STATE = {
         'alfau',                            # [rad] Real-world grid cell orientation around u
         'alfav',                            # [rad] Real-world grid cell orientation around v
         'zb',                               # [m] Bed level above reference
+        'S',                                # [-] Level of saturation
         'xu',                               # [m] 
         'yu',                               # [m] 
         'dnu',                              # [m]   
@@ -102,19 +103,12 @@ MODEL_STATE = {
         'ustar0',
         'Ts',                               # NEW! Dynamic adaption time
         'T0',
-        'uufrac',
-        'uusfrac',
-        'uunfrac',
-        'delhs',
-        'delhn',
-        'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
-        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
-        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
+        'ls',
+        'Ts2',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
         'Ct',                               # [kg/m^2] Instantaneous sediment concentration integrated over saltation height
-        'Cuf',                              # NEW!
         'q',                                # [kg/m/s] Instantaneous sediment flux
         'qs',                               # [kg/m/s] Instantaneous sediment flux in x-direction
         'qn',                               # [kg/m/s] Instantaneous sediment flux in y-direction
@@ -124,13 +118,17 @@ MODEL_STATE = {
         'w_air',                            # [-] Weights of sediment fractions based on grain size distribution in the air
         'w_bed',                            # [-] Weights of sediment fractions based on grain size distribution in the bed
         'uth',                              # [m/s] Shear velocity threshold
-        'uthf',                             # NEW!
         'As',
         'An',
         'ets',
         'etn',
         'uth0',                             # NEW! [m/s] Shear velocity threshold
         'S',                                # NEW!
+        'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
+        'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
+        'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
+        'dhs',
+        'dhn',
     ),
     ('ny','nx','nlayers') : (
         'thlyr',                            # [m] Bed composition layer thickness
@@ -225,9 +223,9 @@ DEFAULT_CONFIG = {
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
     'Mcr_dyn'             : 33.,                # [-] NEW! 
-    'M_sep'               : 14.,                # [-] NEW!
+    'M_sep'               : 11.,                # [-] NEW!
     'M_dSlope'            : 11.,                # [-] NEW!
-    'm_kCut'              : 2.0,                # [-] NEW!
+    'm_kCut'              : 2.,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)

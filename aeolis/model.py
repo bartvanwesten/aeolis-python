@@ -240,14 +240,26 @@ class AeoLiS(IBmi):
         
         # calculate separation bubble
         self.s = aeolis.separation.separation(self.s, self.p)
-#        self.s = aeolis.wind.filter_low(self.s, self.p, 'zsep', 'y', 50.0)
+        
+        # filter separation bubble in x- and y-direction
+#        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'x', 2.)
+#        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 2.)
         
         # calculate shear stresses over the combined bedlevel and separation bubble
         self.s = aeolis.wind.shear(self.s, self.p)
         
+        # compute threshold
+        self.s = aeolis.threshold.compute(self.s, self.p)
+        
+        # compute shear velocity stress and grain speed
+        self.s = aeolis.transport.grainspeed(self.s, self.p)
+        
         # include effect of separation bubble on shear stresses
         self.s = aeolis.separation.separation_shear(self.s, self.p)
-
+        
+        # calculate saturation time
+        self.s = aeolis.transport.saturation_time(self.s, self.p)
+        
         # determine optimal time step
         if not self.set_timestep(dt):
             return
@@ -258,19 +270,9 @@ class AeoLiS(IBmi):
         
         # mix top layer
         self.s = aeolis.bed.mixtoplayer(self.s, self.p)
-
-        # compute threshold
-        self.s = aeolis.threshold.compute(self.s, self.p)
-        
-        # compute shear velocity stress and grain speed
-        self.s = aeolis.transport.grainspeed(self.s, self.p)
         
         #compute equilibrium transport
         self.s = aeolis.transport.equilibrium(self.s, self.p)
-        
-        # calculate saturation time
-        self.s = aeolis.separation.separation_shear_Ts(self.s, self.p)
-        self.s = aeolis.transport.saturation_factor(self.s, self.p)
         
         #compute vegetation shear
 #        self.s = aeolis.vegetation.vegshear(self.s, self.p)
@@ -637,7 +639,7 @@ class AeoLiS(IBmi):
         return self.solve(alpha=.5, beta=1.)
 
     
-    def solve(self, alpha=.5, beta=1.):
+    def solve_bas(self, alpha=.5, beta=1.):
         '''Implements the explicit Euler forward, implicit Euler backward and semi-implicit Crank-Nicolson numerical schemes
 
         Determines weights of sediment fractions, sediment pickup and
@@ -696,21 +698,21 @@ class AeoLiS(IBmi):
                         time=self.t,
                         dt=self.dt)
         
-        #define velocity fluxes
-        ufs = np.zeros((p['ny']+1,p['nx']+1))
-        ufs[:,1:] = 0.5*s['uus'][:,:-1] + 0.5*s['uus'][:,1:]
-        ufn = np.zeros((p['ny']+1,p['nx']+1))
-        ufn[1:,:] = 0.5*s['uun'][:-1,:] + 0.5*s['uun'][1:,:]
-        #boundary values
-        ufs[:,0]  = s['uus'][:,0]
-        ufs[:,-1] = s['uun'][:,-1]
+##         define velocity fluxes
+#        ufs = np.zeros((p['ny']+1,p['nx']+1))
+#        ufs[:,1:] = 0.5*s['uus'][:,:-1,0] + 0.5*s['uus'][:,1:,0]
+#        ufn = np.zeros((p['ny']+1,p['nx']+1))
+#        ufn[1:,:] = 0.5*s['uun'][:-1,:,0] + 0.5*s['uun'][1:,:,0]
+#        
+##        boundary values
+#        ufs[:,0]  = s['uus'][:,0,0]
+#        if p['boundary_lateral'] == 'circular':
+#            ufn[0,:] = 0.5*s['uun'][0,:,0] + 0.5*s['uun'][-1,:,0]
+#        else:
+#            ufn[0,:]  = s['uun'][0,:,0]
         
-        if p['boundary_lateral'] == 'circular':
-            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
-            ufn[-1,:] = ufn[0,:]
-        else:
-            ufn[0,:]  = s['ugn'][0,:]
-            ufn[-1,:] = s['ugn'][-1,:]
+        ufs = s['uus'][:,:,0]
+        ufn = s['uun'][:,:,0]
 
         # define matrix coefficients to solve linear system of equations
         Cs = self.dt * s['dnz'] * s['dsdnzi'] * ufs
@@ -726,20 +728,33 @@ class AeoLiS(IBmi):
             sgn = 2. * ixn - 1.
         else:
             # or centralizing weights
-            ixs = beta + np.zeros(s['uu'])
-            ixn = beta + np.zeros(s['uu'])
-            sgs = np.zeros(s['uu'])
-            sgn = np.zeros(s['uu'])
+            ixs = beta + np.zeros(ufs)
+            ixn = beta + np.zeros(ufn)
+            sgs = np.zeros(ufs)
+            sgn = np.zeros(ufn)
 
         # initialize matrix diagonals
-        A0 = np.zeros(s['uu'].shape)
-        Apx = np.zeros(s['uu'].shape)
-        Ap1 = np.zeros(s['uu'].shape)
-        Ap2 = np.zeros(s['uu'].shape)
-        Amx = np.zeros(s['uu'].shape)
-        Am1 = np.zeros(s['uu'].shape)
-        Am2 = np.zeros(s['uu'].shape)
+        A0 = np.zeros(s['zb'][:,:].shape)
+        Apx = np.zeros(s['zb'][:,:].shape)
+        Ap1 = np.zeros(s['zb'][:,:].shape)
+        Ap2 = np.zeros(s['zb'][:,:].shape)
+        Amx = np.zeros(s['zb'][:,:].shape)
+        Am1 = np.zeros(s['zb'][:,:].shape)
+        Am2 = np.zeros(s['zb'][:,:].shape)
 
+#        # populate matrix diagonals
+#        A0 = 1. + Ti * alpha
+#        A0 += sgs * Cs * alpha
+#        A0 += sgn * Cn * alpha
+#        #A0 -= Cs * alpha * (1. - ixs)
+#        #A0 += Cs * alpha * ixs
+#        #A0 -= Cn * alpha * (1.- ixn)
+#        #A0 += Cn * alpha * ixn
+#        Apx = Cn * alpha * (1. - ixn)
+#        Ap1 = Cs * alpha * (1. - ixs)
+#        Amx = -Cn * alpha * ixn
+#        Am1 = -Cs * alpha * ixs
+        
         # populate matrix diagonals
         A0 = 1. + (sgs * Cs + sgn * Cn + Ti) * alpha
         Apx = Cn * alpha * (1. - ixn)
@@ -801,14 +816,14 @@ class AeoLiS(IBmi):
         # construct sparse matrix
         if p['ny'] > 0:
             i = p['nx']+1
-            A = scipy.sparse.diags((Apx.flatten()[:i],
+            A = scipy.sparse.diags((Apx.flatten()[-i:],
                                     Amx.flatten()[i:],
                                     Am2.flatten()[2:],
                                     Am1.flatten()[1:],
                                     A0.flatten(),
                                     Ap1.flatten()[:-1],
                                     Ap2.flatten()[:-2],
-                                    Apx.flatten()[i:],
+                                    Apx.flatten()[:-i],
                                     Amx.flatten()[:i]),
                                    (-i*p['ny'],-i,-2,-1,0,1,2,i,i*p['ny']), format='csr')
         else:
@@ -835,7 +850,7 @@ class AeoLiS(IBmi):
                 self._count('matrixsolve')
 
                 # create the right hand side of the linear system
-                y_i = np.zeros(s['uu'].shape)
+                y_i = np.zeros(s['zb'][:,:].shape)
                 y_i[:,1:-1] = l['Ct'][:,1:-1,i] \
                     + alpha * w[:,1:-1,i] * s['Cu'][:,1:-1,i] * Ti[:,1:-1] \
                     + (1. - alpha) * (
@@ -943,7 +958,7 @@ class AeoLiS(IBmi):
                     w_air=w_air,
                     w_bed=w_bed)
 
-    def solve_pieter(self, alpha=.5, beta=1.):
+    def solve(self, alpha=.5, beta=1.):
         '''Implements the explicit Euler forward, implicit Euler backward and semi-implicit Crank-Nicolson numerical schemes
 
         Determines weights of sediment fractions, sediment pickup and
@@ -1015,10 +1030,10 @@ class AeoLiS(IBmi):
         # to be removed: use equilibrium grain velocity field for now
         # ! be aware: this is approx 1.25 m/s (much smaller than wind velocity)
 #        ix = Ct > p['max_error']
-        ugs = s['uus'].copy()
-        ugn = s['uun'].copy()
-        s['ugs'] = s['uus'].copy()
-        s['ugn'] = s['uun'].copy()
+        ugs = s['uus'][:,:,0].copy()
+        ugn = s['uun'][:,:,0].copy()
+        s['ugs'] = s['uus'][:,:,0].copy()
+        s['ugn'] = s['uun'][:,:,0].copy()
         
 #        #TEMP!
 #        ug = np.zeros(s['uus'].shape)
@@ -1053,6 +1068,9 @@ class AeoLiS(IBmi):
         else:
             ufn[0,:]  = s['ugn'][0,:]
             ufn[-1,:] = s['ugn'][-1,:]
+            
+#        ufs[:,:] = 0.
+#        ufn[:,:] = 0.
         
         beta = abs(beta)
         if beta >= 1.:
@@ -1166,7 +1184,26 @@ class AeoLiS(IBmi):
         else:
             raise ValueError('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'])
 
-        # construct sparse matrix
+#        # construct sparse matrix
+#        if p['ny'] > 0:
+#            i = p['nx']+1
+#            A = scipy.sparse.diags((Apx.flatten()[-i:],
+#                                    Amx.flatten()[i:],
+#                                    Am1.flatten()[1:],
+#                                    A0.flatten(),
+#                                    Ap1.flatten()[:-1],
+#                                    Apx.flatten()[:-i],
+#                                    Amx.flatten()[:i]),
+#                                   (-i*p['ny'],-i,-1,0,1,i,i*p['ny']), format='csr')
+#        else:
+#            A = scipy.sparse.diags((Am2.flatten()[2:],
+#                                    Am1.flatten()[1:],
+#                                    A0.flatten(),
+#                                    Ap1.flatten()[:-1],
+#                                    Ap2.flatten()[:-2]),
+#                                   (-2,-1,0,1,2), format='csr')
+            
+                    # construct sparse matrix
         if p['ny'] > 0:
             i = p['nx']+1
             A = scipy.sparse.diags((Apx.flatten()[:i],
@@ -1253,12 +1290,12 @@ class AeoLiS(IBmi):
                             + (1. - ixfn[0,:]) * ( alpha * qn[0,:,i] \
                                                    + (1. - alpha ) * l['qn'][0,:,i] )
                         qnxfn_i[-1,:] = qnxfn_i[0,:]                   
-                        
+                
                 # calculate pickup
-                D_i = s['dsdnz'] / Ts * ( alpha * Ct[:,:,i]  \
+                D_i = s['dsdnz'] / p['T'] * ( alpha * Ct[:,:,i]  \
                                             + (1. - alpha ) * l['Ct'][:,:,i] )
-                A_i = s['dsdnz'] / Ts * s['mass'][:,:,0,i] + D_i # Availability
-                U_i = s['dsdnz'] / Ts * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
+                A_i = s['dsdnz'] / p['T'] * s['mass'][:,:,0,i] + D_i # Availability
+                U_i = s['dsdnz'] / p['T'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
                                             + (1. - alpha ) * l['w'][:,:,i] * l['Cu'][:,:,i] )
                 #deficit_i = E_i - A_i
                 E_i= np.minimum(U_i, A_i)
@@ -1279,7 +1316,9 @@ class AeoLiS(IBmi):
                     yqs_i = np.zeros(s['uw'].shape)
                     yqs_i         -= s['dsdnz'] / self.dt * ( qs[:,:,i] \
                                                             - l['qs'][:,:,i] )      #time derivative
-                    yqs_i         += s['uus'][:,:] * E_i - ugs[:,:] * D_i       #source term
+#                    yqs_i         += s['uus'][:,:] * E_i - ugs[:,:] * D_i       #source term
+                    yqs_i         += s['uus'][:,:,0] * E_i - ugs[:,:] * D_i       #source term                    
+                    
                     yqs_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * qsxfs_i[:,1:-1] #lower x-face
                     yqs_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * qsxfs_i[:,1:-1] #upper x-face
                     yqs_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * qsxfn_i[1:-1,:] #lower y-face
@@ -1288,7 +1327,9 @@ class AeoLiS(IBmi):
                     yqn_i = np.zeros(s['uw'].shape)
                     yqn_i         -= s['dsdnz'] / self.dt * ( qn[:,:,i] \
                                                             - l['qn'][:,:,i] )      #time derivative
-                    yqn_i         += s['uun'][:,:] * E_i - ugn[:,:] * D_i       #source term
+#                    yqn_i         += s['uun'][:,:] * E_i - ugn[:,:] * D_i       #source term
+                    yqn_i         += s['uun'][:,:,0] * E_i - ugn[:,:] * D_i       #source term                    
+                    
                     yqn_i[:,1:]   += s['dnz'][:,1:]  * ufs[:,1:-1] * qnxfs_i[:,1:-1] #lower x-face
                     yqn_i[:,:-1]  -= s['dnz'][:,:-1] * ufs[:,1:-1] * qnxfs_i[:,1:-1] #upper x-face
                     yqn_i[1:,:]   += s['dsz'][1:,:]  * ufn[1:-1,:] * qnxfn_i[1:-1,:] #lower y-face

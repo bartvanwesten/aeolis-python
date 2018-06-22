@@ -89,6 +89,8 @@ def compute(s, p):
         # apply complex mask
         s['uth'] = apply_mask(s['uth'], s['threshold_mask'])
         
+        s['uthf'] = s['uth'].copy()
+        
     # Non-erodible layer NEW!
     if p['ne_file'] is None:
         s = s # Opposite of None...?
@@ -323,7 +325,7 @@ def compute_roughness(s, p):
     mass = s['mass'][:,:,0,:].reshape((-1,nf))
     gd = np.zeros((nx*ny,))
     for i in range(nf):
-        ix = (s['tau'] <= s['uth'][:,:,i]).flatten()
+        ix = (s['ustar0'] <= s['uth'][:,:,i]).flatten()
         gd[ix] += mass[ix,i]
 #    ix = (mass.sum(axis=-1) > 1e-10)
     gd /= mass.sum(axis=-1)
@@ -340,17 +342,28 @@ def compute_roughness(s, p):
 def non_erodible(s, p): #NEW!
     
 #    # Define non-erodible layer
+    
+    nf     = p['nfractions']
+    ustar  = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
+    
     s['zne'][:,:] = p['ne_file']
     
-#    ix = s['zb'] <= s['zne']#+0.01
-#    jx = s['zb'] >= s['zne']-0.1
-#    kx = ix*jx
+    # Hard method
+    
+    ix = s['zb']<=s['zne']
+    s['uth'][ix] = np.inf
+    
+#    # Smooth method
 #    
-#    s['zne'][kx] = s['zb'][kx]
+#    alfa = .5
 #    
-    s['uthf'] = s['uth'].copy()
-    s['uthf'][s['zb']<=s['zne']] *= np.inf
-    s['uth'][s['zb']<=s['zne']] *= np.inf
+#    nf = p['nfractions']
+#    thlyr = s['thlyr'][:,:,0]
+#    thuthlyr = alfa * thlyr
+#    ix = s['zb']<=s['zne']+thuthlyr
+    
+#    for i in range(nf):
+#        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr[ix])*(s['ustar'][ix]*1.2-s['uth'][ix,i]),s['uth'][ix,i])
     
     return s
 
