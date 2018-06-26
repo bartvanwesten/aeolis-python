@@ -230,12 +230,12 @@ class WindShear:
 
         dtaux = self.igrid['dtaux']
         dtauy = self.igrid['dtauy']
-#        
-#        taux[ix] = tau[ix] * (taux[ix] / tau[ix] + dtaux[ix])
-#        tauy[ix] = tau[ix] * (tauy[ix] / tau[ix] + dtauy[ix])
         
-        taux[ix] = taux[ix] + tau[ix] * dtaux[ix]
-        tauy[ix] = tauy[ix] + tau[ix] * dtauy[ix]
+        taux[ix] = tau[ix] * (taux[ix] / tau[ix] + dtaux[ix])
+        tauy[ix] = tau[ix] * (tauy[ix] / tau[ix] + dtauy[ix])
+        
+#        taux[ix] = taux[ix] + tau[ix] * dtaux[ix]
+#        tauy[ix] = tauy[ix] + tau[ix] * dtauy[ix]
 
         return taux, tauy
 

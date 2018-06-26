@@ -112,18 +112,23 @@ def interpolate(s, p, t):
 
     # compute saltation velocity
     z = p['z']
-    z0 = p['grain_size'][0]/20. #TEMP
+    z0 = p['k'] #p['grain_size'][0]/20. #TEMP
+    
+    # Determine shear velocity
     
     s['ustars'] = s['uws']*p['karman']/np.log(z/z0)
     s['ustarn'] = s['uwn']*p['karman']/np.log(z/z0)
     
     s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
+    s['ustar0'] = s['ustar']
     
-    s['taus'] = p['rhoa']*s['ustars']**2
-    s['taun'] = p['rhoa']*s['ustarn']**2
+    # Determine shear stress
     
-    s['tau'] = np.hypot(s['taus'],s['taun'])
+    s['tau'] = p['rhoa']*s['ustar']**2
     s['tau0'] = s['tau']
+    
+    s['taus'] = s['tau0']*s['ustars']/s['ustar']
+    s['taun'] = s['tau0']*s['ustarn']/s['ustar']
     
     #OLD
     
@@ -160,22 +165,25 @@ def shear(s,p):
         s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
         
         # set minimum of taus to zero
-        s['taus']=np.maximum(s['taus'],0.)
+#        s['taus']=np.maximum(s['taus'],0.)
         s['tau'] = np.hypot(s['taus'], s['taun'])
         
         # set boundaries
         s['tau'][:,0] = s['tau0'][:,0]
         s['taus'][:,0] = s['tau0'][:,0]
         s['taun'][:,0] = 0.
-    
-        s['ustar0'] = np.sqrt(s['tau0']/p['rhoa'])
         
-        # Method 1: According to Duran 2010
-        s['ustar'] = s['ustar0']*np.sqrt(1.+s['dtaus'])
-        s['ustars'] = s['ustar']*s['taus']/s['tau']
-        s['ustarn'] = s['ustar']*s['taun']/s['tau']
+        # Method 1: According to Duran 2010 
+        s['ustars'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taus']/s['tau']
+        s['ustarn'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taun']/s['tau']
+        s['ustar'] = np.hypot(s['ustars'], s['ustarn'])
         
-        # Method 2:
+        # Method 2
+#        s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
+#        s['ustars'] = s['ustar']*s['taus']/s['tau']
+#        s['ustarn'] = s['ustar']*s['taun']/s['tau']
+        
+        # Method 3
         
 #        s['ustars'] = np.sqrt(s['taus']/p['rhoa'])
 #        
@@ -187,7 +195,6 @@ def shear(s,p):
 #        s['ustar'] = np.hypot(s['ustars'], s['ustars'])
         
     return s
-
 
 def get_velocity_at_height(u, z, z0, z1=None):
     '''Compute shear velocity from wind velocity following Prandl-Karman's Law of the Wall

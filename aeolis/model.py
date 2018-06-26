@@ -254,11 +254,11 @@ class AeoLiS(IBmi):
         # compute shear velocity stress and grain speed
         self.s = aeolis.transport.grainspeed(self.s, self.p)
         
-        # include effect of separation bubble on shear stresses
-        self.s = aeolis.separation.separation_shear(self.s, self.p)
-        
         # calculate saturation time
         self.s = aeolis.transport.saturation_time(self.s, self.p)
+        
+        # include effect of separation bubble on shear stresses
+        self.s = aeolis.separation.separation_shear(self.s, self.p)
         
         # determine optimal time step
         if not self.set_timestep(dt):

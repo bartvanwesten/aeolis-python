@@ -53,7 +53,7 @@ def separation_shear(s,p):
     nf = p['nfractions']
     
     # ACCORDING CDM
-    m_tau_sepbub = .5
+    m_tau_sepbub = .05
     slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
     delta = 1./(slope*m_tau_sepbub)
     
@@ -61,23 +61,38 @@ def separation_shear(s,p):
     
     if p['process_separation']:
 #        s['tau'] *=s['zsepdelta']
-        s['taus'] *=s['zsepdelta']
-        s['taun'] *=s['zsepdelta']
+#        s['taus'] *=s['zsepdelta']
+#        s['taun'] *=s['zsepdelta']
         s['ustar'] *=s['zsepdelta']
-        s['ustars'] *=s['zsepdelta']
-        s['ustarn'] *=s['zsepdelta']
+#        s['ustars'] *=s['zsepdelta']
+#        s['ustarn'] *=s['zsepdelta']
         
-        zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
+    ets = np.zeros(s['zb'].shape)
+    etn = np.zeros(s['zb'].shape)
         
-        s['uu'] *= zsepdelta
-        s['uus'] *= zsepdelta
-        s['uun'] *= zsepdelta
+    ix = s['ustar'] != 0.
+    ets[ix] = s['ustars'][ix]/s['ustar'][ix]
+    etn[ix] = s['ustarn'][ix]/s['ustar'][ix]
         
-#        s['Ts'] *= s['zsepdelta']
-#        s['Ts'] = np.maximum(s['Ts'],0.01)
+    s['tau'] = p['rhoa']*s['ustar']**2
+
+    s['taus'] = s['tau']*ets
+    s['taun'] = s['tau']*etn
+    
+    s['ustars'] = s['ustar']*ets
+    s['ustarn'] = s['ustar']*etn
         
-    s['tau'] = np.hypot(s['taus'],s['taun'])
-    s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
+#        zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
+        
+#        s['uu'] *= zsepdelta
+#        s['uus'] *= zsepdelta
+#        s['uun'] *= zsepdelta
+        
+#    s['Ts'] *= s['zsepdelta']
+#    s['Ts'] = np.maximum(s['Ts'],0.2)
+        
+#    s['tau'] = np.hypot(s['taus'],s['taun'])
+#    s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
     
     return s
 

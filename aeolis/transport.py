@@ -300,10 +300,10 @@ def saturation_time(s,p):
     Ts      = 2*s['uu']*alfa/(g*rgamma)/((ustar/uth)**2-1)
     
     Tsmax   = 5.
-    Tsmin   = 0.01
+    Tsmin   = 0.2
     
     ix      = ustar < uth
-    Ts[ix]  = 0.001
+    Ts[ix]  = 0.2
 
     T0      = 1.75 * ustar0 / g   
     Ts0     = T0 * (uth0/(ustar0-uth0)) / rgamma[0]
@@ -314,7 +314,7 @@ def saturation_time(s,p):
 
     # Filter
     
-    Cut = 50.0
+    Cut = 5.0
     
     parfft = np.fft.fft2(s['Ts'])
     dk = 2.0 * np.pi / np.max(s['x'])
@@ -330,7 +330,7 @@ def saturation_time(s,p):
         s['Ts'][:,i]+=(Ts0-tauavg)
 ##        
 #    Ts = p['T'] * (uth/(ustar-uth)) / rgamma
-#    s['Ts'][:,:] = p['T'] #np.minimum(np.maximum(Ts[:,:,0],0.01),3.)
+    s['Ts'][:,:] = p['T'] #np.minimum(np.maximum(Ts[:,:,0],0.01),3.)
     
 #    print('step')
     
