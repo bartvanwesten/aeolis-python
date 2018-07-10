@@ -94,6 +94,23 @@ def initialize(s, p):
     return s
 
 
+def old(s , p ):
+    
+    s['zbold'] = s['zb'].copy()
+    
+    return s
+
+def changes(s, p):
+    
+    s['dz'] = s['zb'] - s['zbold']
+    
+    s['zb_avg'][:,:,:-1] = s['zb_avg'][:,:,1:]
+    s['zb_avg'][:,:,-1] = s['zb'].copy()
+    
+    s['dz_avg'] = (s['zb_avg'][:,:,-1] - s['zb_avg'][:,:,0]) / p['nsavetimes']
+    
+    return s
+
 def update(s, p):
     '''Update bathymetry and bed composition
 
@@ -175,7 +192,6 @@ def update(s, p):
     # update bathy
     if p['process_bedupdate']:
         dz = dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
-        s['dz'] = dz
         s['zb'] += dz
         s['zs'] += dz
 
@@ -548,7 +564,7 @@ def avalanche_8(s, p):
     
     return s
 
-def avalanche(s, p):
+def avalanche_cell_4(s, p):
     
     if p['process_avalanche']:
     
@@ -674,4 +690,70 @@ def avalanche(s, p):
                 zb[:,0]  = zb[:,1]
                 zb[:,-1] = zb[:,-2]
                 
+    return s
+
+def avalanche(s,p):
+    
+    nx = p['nx']+1
+    ny = p['ny']+1
+        
+    ds = s['dsu']
+    dn = s['dnv']
+    
+    zb = s['zb']
+    
+    #parameters
+    
+#    tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
+    tan_dyn = np.tan(np.deg2rad(p['Mcr_dyn']))
+    
+    E = 0.9
+    
+    grad_h_down = np.zeros((ny,nx,2))
+    flux_down = np.zeros((ny,nx,2))
+    slope_diff = np.zeros((ny,nx))
+    
+    # Calculation of slope (x-direction)
+    
+    grad_h_down[:,1:-1,0] = zb[:,1:-1] - zb[:,2:]
+    
+    ix = zb[:,2:] > zb[:,:-2]
+    grad_h_down[:,1:-1,0][ix] = - (zb[:,1:-1][ix] - zb[:,:-2][ix])
+    
+    # Calculation of slope (y-direction)
+    
+    grad_h_down[1:-1,:,1] = zb[1:-1,:] - zb[2:,:]
+    
+    ix = zb[2:,:] > zb[:-2,:]
+    grad_h_down[1:-1,:,1][ix] = - (zb[1:-1,:][ix] - zb[:-2,:][ix])
+    
+    # Calculation of slopes (x+y)
+    
+    grad_h_down[:,:,0] /= ds
+    grad_h_down[:,:,1] /= dn
+    
+    grad_h2 = np.abs(grad_h_down[:,:,0])**2 + np.abs(grad_h_down[:,:,1])**2
+    grad_h = np.sqrt(grad_h2)
+#    max_grad_h = np.max(grad_h)
+
+    # Calculation of flux
+    
+    ix = grad_h > tan_dyn
+    slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(E*tan_dyn)
+    
+    ix = grad_h != 0
+    
+    flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
+    flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
+    
+    # Calculation of change in bed level
+    
+    q_in = np.zeros((ny,nx))
+    
+    q_out = np.abs(flux_down[:,:,0]) + np.abs(flux_down[:,:,1])
+    
+    q_in[1:-1,1:-1] = np.maximum(flux_down[1:-1,:-2,0],0.) - np.minimum(flux_down[1:-1,2:,0],0.) + np.maximum(flux_down[:-2,1:-1,1],0.) - np.minimum(flux_down[2:,1:-1,1],0.)
+    
+    s['zb'] += E * (q_in - q_out)
+
     return s

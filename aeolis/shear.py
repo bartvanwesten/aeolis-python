@@ -82,7 +82,7 @@ class WindShear:
     
     def __init__(self, x, y, z, dx=1., dy=1.,
                  buffer_width=100., buffer_relaxation=None,
-                 L=100., z0=.001, l=10.):
+                 L=100., z0=.01, l=10.):
         '''Class initialization
             
         Parameters
@@ -311,7 +311,7 @@ class WindShear:
 #                    
 #        self.igrid['z'][ix] = z * self.get_sigmoid(d)
         
-    def compute_shear(self, u0, nfilter=(1.,2.)):
+    def compute_shear(self, u0, nfilter=(1,4)):
         '''Compute wind shear perturbation for given free-flow wind speed on computational grid
         
         Parameters
@@ -339,11 +339,14 @@ class WindShear:
         
         hs = np.fft.fft2(g['z'])
         
-        m_kCut_hs = 50.0
+        # Filter
+        hs = self.filter_highfrequenies(kx, ky, hs, nfilter, 0.2)
         
-        # CHANGE FILTER!
-        dk = 2.0 * np.pi / (np.max(g['x']))
-        hs *= np.exp(-(dk*g['x'])**2./(2.*m_kCut_hs**2.))
+#        m_kCut_hs = 2.0
+#        
+#        # CHANGE FILTER!
+#        dk = 2.0 * np.pi / (np.max(g['x']))
+#        hs *= np.exp(-(dk*g['x'])**2./(2.*m_kCut_hs**2.))
 
         # 1. Auxiliary variables
         #-----------------------
@@ -465,8 +468,8 @@ class WindShear:
             n2 = np.max(nfilter)
             px = 2 * np.pi / self.igrid['dx'] / np.abs(kx)
             py = 2 * np.pi / self.igrid['dy'] / np.abs(ky)
-            s1 =  n1 / np.log(1. / .01 - 1.)
-            s2 = -n2 / np.log(1. / .99 - 1.)
+            s1 =  n1 / np.log(1. / p - 1.)
+            s2 = -n2 / np.log(1. / (1.- p) - 1.)
             f1 = 1. / (1. + np.exp(-(px + n1 - n2) / s1))
             f2 = 1. / (1. + np.exp(-(py + n1 - n2) / s2))
             hs *= f1 * f2

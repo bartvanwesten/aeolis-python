@@ -153,35 +153,48 @@ def shear(s,p):
     
     if 'shear' in s.keys() and p['process_shear']:
         
-        s['zshear'] = np.maximum(s['zb'],s['zsepshear'])
+        s['zshear'] = s['zb'].copy()
         
-        s['shear'].set_topo(s['zb']) #zshear
+        ix = s['zsepshear'] > s['zb']
+        s['zshear'][ix] = s['zsepshear'][ix]
+        
+        # zshear
+        
+        s['shear'].set_topo(s['zshear']) #zshear
         s['shear'](u0=s['uw'][0,0],
                    udir=s['udir'][0,0])
         
         s['dtaus'], s['dtaun'] = s['shear'].get_shear()
-        s['dtaus'] = np.maximum(s['dtaus'], -1.)
+        
+        for j in range(0,p['ny']):
+            avg = np.average(s['dtaus'][j,:2])
+            s['dtaus'][j,:] -= avg
         
         s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
         
         # set minimum of taus to zero
-#        s['taus']=np.maximum(s['taus'],0.)
+        s['taus']=np.maximum(s['taus'],0.)
         s['tau'] = np.hypot(s['taus'], s['taun'])
         
-        # set boundaries
-        s['tau'][:,0] = s['tau0'][:,0]
-        s['taus'][:,0] = s['tau0'][:,0]
-        s['taun'][:,0] = 0.
+#        # set boundaries
+#        s['tau'][:,0] = s['tau0'][:,0]
+#        s['taus'][:,0] = s['tau0'][:,0]
+#        s['taun'][:,0] = 0.
         
         # Method 1: According to Duran 2010 
-        s['ustars'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taus']/s['tau']
-        s['ustarn'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taun']/s['tau']
-        s['ustar'] = np.hypot(s['ustars'], s['ustarn'])
+#        s['ustars'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taus']/s['tau']
+#        s['ustarn'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taun']/s['tau']
+#        s['ustar'] = np.hypot(s['ustars'], s['ustarn'])
+        
+        # Save ustar
+#        s['ustar1'] = s['ustar'].copy()
+#        s['ustars1'] = s['ustars'].copy()
+#        s['ustarn1'] = s['ustarn'].copy()
         
         # Method 2
-#        s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
-#        s['ustars'] = s['ustar']*s['taus']/s['tau']
-#        s['ustarn'] = s['ustar']*s['taun']/s['tau']
+        s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
+        s['ustars'] = s['ustar']*s['taus']/s['tau']
+        s['ustarn'] = s['ustar']*s['taun']/s['tau']
         
         # Method 3
         

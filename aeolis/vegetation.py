@@ -36,15 +36,16 @@ logger = logging.getLogger(__name__)
 
 def germinate (s,p,l,t):
     
-    s['dzdt'] = s['zb'] - s['zbold']
-    s['germinate'] += (t>0)*(s['zb']>=s['zbold']) #18000000
+    
+    
+    s['germinate'] += (t>0)*(s['dz'] > 0.)
     s['germinate'] = np.minimum(s['germinate'],1.)
     
     return s
         
 def grow (s, p, l, t):
     
-    tveg = 50.*24.*3600. # [s]
+    tveg = 365.25*24.*3600. # [s]
     gamma = 1. # [-]
     Hveg = 1. # [m]
 
@@ -63,7 +64,10 @@ def vegshear(s, p):
     roughness = 16. #16.
     
     s['vegfac']= 1./(1. + roughness*s['vegrho'])
-    s['tau'] *= s['vegfac']
+    
+    s['ustars'] *= s['vegfac']
+    s['ustarn'] *= s['vegfac']
+    s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
     
 #    m_kCut_veg = 1. #20
 #    

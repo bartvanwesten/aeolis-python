@@ -229,12 +229,10 @@ class AeoLiS(IBmi):
         '''
 
         self.p['_time'] = self.t
-
-        # store previous state
-        self.l = self.s.copy()
-        # TEMP! Copy + Filter
-#        self.s['zbold']=self.s['zb'].copy()
         
+        # store previous state(s)
+        self.l = self.s.copy()
+      
         # interpolate wind time series
         self.s = aeolis.wind.interpolate(self.s, self.p, self.t)
         
@@ -250,6 +248,9 @@ class AeoLiS(IBmi):
         
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
+        
+        #compute vegetation shear
+#        self.s = aeolis.vegetation.vegshear(self.s, self.p)
         
         # compute shear velocity stress and grain speed
         self.s = aeolis.transport.grainspeed(self.s, self.p)
@@ -273,9 +274,6 @@ class AeoLiS(IBmi):
         
         #compute equilibrium transport
         self.s = aeolis.transport.equilibrium(self.s, self.p)
-        
-        #compute vegetation shear
-#        self.s = aeolis.vegetation.vegshear(self.s, self.p)
 
         # compute instantaneous transport
         if self.p['scheme'] == 'euler_forward':
@@ -287,11 +285,17 @@ class AeoLiS(IBmi):
         else:
             logger.log_and_raise('Unknown scheme [%s]' % self.p['scheme'], exc=ValueError)
 
+        # calculate changes
+        self.s = aeolis.bed.old(self.s, self.p)
+
         # update bed
         self.s = aeolis.bed.update(self.s, self.p)
         
         # avalanching
         self.s = aeolis.bed.avalanche(self.s, self.p)
+        
+        # calculate changes
+        self.s = aeolis.bed.changes(self.s, self.p)
             
         # grow vegetation
 #        self.s = aeolis.vegetation.germinate(self.s, self.p, self.l, self.t)
@@ -698,21 +702,21 @@ class AeoLiS(IBmi):
                         time=self.t,
                         dt=self.dt)
         
-##         define velocity fluxes
-#        ufs = np.zeros((p['ny']+1,p['nx']+1))
-#        ufs[:,1:] = 0.5*s['uus'][:,:-1,0] + 0.5*s['uus'][:,1:,0]
-#        ufn = np.zeros((p['ny']+1,p['nx']+1))
-#        ufn[1:,:] = 0.5*s['uun'][:-1,:,0] + 0.5*s['uun'][1:,:,0]
-#        
-##        boundary values
-#        ufs[:,0]  = s['uus'][:,0,0]
-#        if p['boundary_lateral'] == 'circular':
-#            ufn[0,:] = 0.5*s['uun'][0,:,0] + 0.5*s['uun'][-1,:,0]
-#        else:
-#            ufn[0,:]  = s['uun'][0,:,0]
+#         define velocity fluxes
+        ufs = np.zeros((p['ny']+1,p['nx']+1))
+        ufs[:,1:] = 0.5*s['uus'][:,:-1,0] + 0.5*s['uus'][:,1:,0]
+        ufn = np.zeros((p['ny']+1,p['nx']+1))
+        ufn[1:,:] = 0.5*s['uun'][:-1,:,0] + 0.5*s['uun'][1:,:,0]
         
-        ufs = s['uus'][:,:,0]
-        ufn = s['uun'][:,:,0]
+#        boundary values
+        ufs[:,0]  = s['uus'][:,0,0]
+        if p['boundary_lateral'] == 'circular':
+            ufn[0,:] = 0.5*s['uun'][0,:,0] + 0.5*s['uun'][-1,:,0]
+        else:
+            ufn[0,:]  = s['uun'][0,:,0]
+        
+#        ufs = s['uus'][:,:,0]
+#        ufn = s['uun'][:,:,0]
 
         # define matrix coefficients to solve linear system of equations
         Cs = self.dt * s['dnz'] * s['dsdnzi'] * ufs
@@ -833,6 +837,7 @@ class AeoLiS(IBmi):
                                     Ap1.flatten()[:-1],
                                     Ap2.flatten()[:-2]),
                                    (-2,-1,0,1,2), format='csr')
+            
 
         # solve transport for each fraction separately using latest
         # available weights
@@ -1183,27 +1188,8 @@ class AeoLiS(IBmi):
             Apx[-1,:] += s['dsz'][-1,:] * ufn[-1,:] * (1. - ixfn[-1,:]) * alpha #upper y-face
         else:
             raise ValueError('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'])
-
-#        # construct sparse matrix
-#        if p['ny'] > 0:
-#            i = p['nx']+1
-#            A = scipy.sparse.diags((Apx.flatten()[-i:],
-#                                    Amx.flatten()[i:],
-#                                    Am1.flatten()[1:],
-#                                    A0.flatten(),
-#                                    Ap1.flatten()[:-1],
-#                                    Apx.flatten()[:-i],
-#                                    Amx.flatten()[:i]),
-#                                   (-i*p['ny'],-i,-1,0,1,i,i*p['ny']), format='csr')
-#        else:
-#            A = scipy.sparse.diags((Am2.flatten()[2:],
-#                                    Am1.flatten()[1:],
-#                                    A0.flatten(),
-#                                    Ap1.flatten()[:-1],
-#                                    Ap2.flatten()[:-2]),
-#                                   (-2,-1,0,1,2), format='csr')
-            
-                    # construct sparse matrix
+         
+        # construct sparse matrix
         if p['ny'] > 0:
             i = p['nx']+1
             A = scipy.sparse.diags((Apx.flatten()[:i],
@@ -1292,10 +1278,10 @@ class AeoLiS(IBmi):
                         qnxfn_i[-1,:] = qnxfn_i[0,:]                   
                 
                 # calculate pickup
-                D_i = s['dsdnz'] / p['T'] * ( alpha * Ct[:,:,i]  \
+                D_i = s['dsdnz'] / s['Ts'] * ( alpha * Ct[:,:,i]  \
                                             + (1. - alpha ) * l['Ct'][:,:,i] )
-                A_i = s['dsdnz'] / p['T'] * s['mass'][:,:,0,i] + D_i # Availability
-                U_i = s['dsdnz'] / p['T'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
+                A_i = s['dsdnz'] / s['Ts'] * s['mass'][:,:,0,i] + D_i # Availability
+                U_i = s['dsdnz'] / s['Ts'] * ( w[:,:,i] * alpha * s['Cu'][:,:,i] \
                                             + (1. - alpha ) * l['w'][:,:,i] * l['Cu'][:,:,i] )
                 #deficit_i = E_i - A_i
                 E_i= np.minimum(U_i, A_i)
@@ -1342,7 +1328,7 @@ class AeoLiS(IBmi):
                 elif p['boundary_offshore'] == 'input':
                     yCt_i[:,0]   += s['dnz'][:,0] * p['sedimentinput'] #units still to be found
                 elif p['boundary_offshore'] == 'saturatedflux':
-                    yCt_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] #lower x-face
+                    yCt_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu0'][:,0,i] * p['sedimentinput'] #lower x-face
                     if qflag :
                         yqs_i[:,0]   += s['dnz'][:,0]  * ufs[:,0] * s['Cu'][:,0,i] \
                                          * s['uus'][:,0]

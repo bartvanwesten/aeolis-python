@@ -115,7 +115,7 @@ def grainspeed(s,p):
 
 #    ueff = (uth/kappa)*(np.log(z1/z0)+2*(np.sqrt(1+z1/zm*(ustar**2/uth**2-1))-1))
     ueff = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(ustar/uth-1))
-    
+    ueff0 = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(ustar0/uth-1))
     
     # Grain velocity
     
@@ -127,23 +127,34 @@ def grainspeed(s,p):
     et  = np.zeros(s['uth'].shape)
     A   = np.zeros(s['uth'].shape)
     
+    dhs0 = np.zeros(s['uth'].shape)
+    dhn0 = np.zeros(s['uth'].shape)
+    ets0 = np.zeros(s['uth'].shape)
+    etn0 = np.zeros(s['uth'].shape)
+    dh0  = np.zeros(s['uth'].shape)
+    et0  = np.zeros(s['uth'].shape)
+    A0   = np.zeros(s['uth'].shape)
+    
     x       = np.repeat(s['x'][:,:,np.newaxis], nf, axis = 0)
     y       = np.repeat(s['y'][:,:,np.newaxis], nf, axis = 0)
     z       = np.repeat(s['zb'][:,:,np.newaxis], nf, axis = 0)
     
     # Improve according to new gridparams! IS this correct?
     
-    dhs[:,1:-1,:] = (z[:,2:,:]-z[:,:-2,:])/(x[:,2:,:]-x[:,:-2,:])
+    dhs[:,:-1,:] = (z[:,1:,:]-z[:,:-1,:])/(x[:,1:,:]-x[:,:-1,:])
     dhn[1:-1,:,:] = (z[2:,:,:]-z[:-2,:,:])/(y[2:,:,:]-y[:-2,:,:])
+    
+    dhs[:,:,:] = 0.
+    dhn[:,:,:] = 0.
     
     # Boundaries
     dhs[:,0,:] = dhs[:,1,:]
     dhn[0,:,:] = dhn[1,:,:]    
-    dhs[:,-1,:] = dhs[:,-2,:]
+#    dhs[:,-1,:] = dhs[:,-2,:]
     dhn[-1,:,:] = dhn[-2,:,:]
     
-    s['dhs']=ets
-    s['dhn']=etn
+    s['dhs']=dhs
+    s['dhn']=dhn
     
     ets[:,:,:] += 1.
     etn[:,:,:] += 0.
@@ -152,16 +163,32 @@ def grainspeed(s,p):
     
     ets[ix] = ustars[ix] / ustar[ix]
     etn[ix] = ustarn[ix] / ustar[ix]
+    
+    ets0 = 1.
+    etn0 = 0.
 
-    dh = np.hypot(dhs,dhn)
-    et = np.hypot(ets,etn)
+    dh[:,:,:] = np.hypot(dhs,dhn)
+    et[:,:,:] = 1.#np.hypot(ets,etn)
+    
+    dh0[:,:,:] = 1.
+    et0[:,:,:] = 1.
     
     A = et + 2*alfa*dh
+    A0 = et0 + 2*alfa*dh0
+    
+#    As = ets + 2*alfa*dhs
+#    An = etn + 2*alfa*dhn
+#    
+#    A = np.hypot(As,An)
 
     s['uus'] = (ueff-uf/(np.sqrt(2*alfa)*A))*ets-(np.sqrt(2*alfa)*uf/A)*dhs
     s['uun'] = (ueff-uf/(np.sqrt(2*alfa)*A))*etn-(np.sqrt(2*alfa)*uf/A)*dhn
     
+    s['uus0'] = (ueff0-uf/(np.sqrt(2*alfa)*A0))*ets0-(np.sqrt(2*alfa)*uf/A0)*dhs0
+    s['uun0'] = (ueff0-uf/(np.sqrt(2*alfa)*A0))*etn0-(np.sqrt(2*alfa)*uf/A0)*dhn0
+    
     s['uu'] = np.hypot(s['uus'], s['uun'])
+    s['uu0'] = np.hypot(s['uus0'], s['uun0'])
 
     return s
 
@@ -186,6 +213,7 @@ def equilibrium(s, p):
         
         nf = p['nfractions']
         ustar = s['ustar'][:,:,np.newaxis].repeat(nf, axis=2)
+        ustar0 = s['ustar0'][:,:,np.newaxis].repeat(nf, axis=2)
 
         ix = ustar != 0.
         
@@ -196,6 +224,8 @@ def equilibrium(s, p):
         if p['method_transport'].lower() == 'bagnold':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
                                      * (ustar[ix] - s['uth'][ix])**3 / s['uu'][ix])
+            s['Cu0'] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
+                                     * (ustar0 - s['uth0'])**3 / s['uu0'])
         elif p['method_transport'].lower() == 'kawamura':
             s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
                                      * (ustar[ix] + s['uth'][ix])**2 * (ustar[ix] - s['uth'][ix]) / s['uu'][ix])
@@ -291,6 +321,9 @@ def saturation_time(s,p):
     uth = s['uth0']
     ustar  = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
     
+    zb  = np.repeat(s['zb'][:,:,np.newaxis], nf, axis = 0)
+    zsep  = np.repeat(s['zsep'][:,:,np.newaxis], nf, axis = 0)
+    
     uth0 = np.average(s['uth0'])
     ustar0 = np.average(s['ustar0'])
     
@@ -299,38 +332,41 @@ def saturation_time(s,p):
     Ts      = np.zeros(ustar.shape)
     Ts      = 2*s['uu']*alfa/(g*rgamma)/((ustar/uth)**2-1)
     
-    Tsmax   = 5.
-    Tsmin   = 0.2
+    Tsmax   = 10.
+    Tsmin   = 0.01
     
-    ix      = ustar < uth
-    Ts[ix]  = 0.2
+    ix      = ustar <= uth0
+    Ts[ix]  = 10.0
+    
+#    T0      = 1.75 * ustar0 / g   
+#    Ts0     = T0 * (uth0/(ustar0-uth0)) / rgamma[0]
 
-    T0      = 1.75 * ustar0 / g   
-    Ts0     = T0 * (uth0/(ustar0-uth0)) / rgamma[0]
+    ix      = zsep > 0.1
+    Ts[ix]  = 0.01
 
     # Range
     Ts = np.maximum(np.minimum(Ts,Tsmax),Tsmin) 
-    s['Ts'][:,:] = Ts[:,:,0]
+    s['Ts'][:,:] = p['T'] #Ts[:,:,0]
 
     # Filter
-    
-    Cut = 5.0
-    
-    parfft = np.fft.fft2(s['Ts'])
-    dk = 2.0 * np.pi / np.max(s['x'])
-    fac = np.exp(-(dk*s['x']**2.)/(2.*Cut**2.))
-    parfft *= fac
-    s['Ts'] = np.real(np.fft.ifft2(parfft))
-    
-    for j in range(0,p['ny']):
-        tauavg = np.average(s['Ts'][j,:10])
-        s['Ts'][j,:]+=(Ts0-tauavg)
-    for i in range(0,p['nx']):
-        tauavg = np.average(s['Ts'][:10,i])
-        s['Ts'][:,i]+=(Ts0-tauavg)
+#    
+#    Cut = 5.0
+#    
+#    parfft = np.fft.fft2(s['Ts'])
+#    dk = 2.0 * np.pi / np.max(s['x'])
+#    fac = np.exp(-(dk*s['x']**2.)/(2.*Cut**2.))
+#    parfft *= fac
+#    s['Ts'] = np.real(np.fft.ifft2(parfft))
+#    
+#    for j in range(0,p['ny']):
+#        tauavg = np.average(s['Ts'][j,:10])
+#        s['Ts'][j,:]+=(Ts0-tauavg)
+#    for i in range(0,p['nx']):
+#        tauavg = np.average(s['Ts'][:10,i])
+#        s['Ts'][:,i]+=(Ts0-tauavg)
 ##        
 #    Ts = p['T'] * (uth/(ustar-uth)) / rgamma
-    s['Ts'][:,:] = p['T'] #np.minimum(np.maximum(Ts[:,:,0],0.01),3.)
+#    s['Ts'][:,:] = p['T'] #np.minimum(np.maximum(Ts[:,:,0],0.01),3.)
     
 #    print('step')
     

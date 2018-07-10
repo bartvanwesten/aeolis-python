@@ -34,8 +34,13 @@ INITIAL_STATE = {
         'tau',                              # [m/s] Wind shear velocity
         'taus',                             # [m/s] Component of wind shear velocity in x-direction
         'taun',                             # [m/s] Component of wind shear velocity in y-direction
+        'tauzb',                              # [m/s] Wind shear velocity
+        'tauszb',                             # [m/s] Component of wind shear velocity in x-direction
+        'taunzb',                             # [m/s] Component of wind shear velocity in y-direction
         'dtaus',                            # [-] Component of the wind shear perturbation in x-direction
         'dtaun',                            # [-] Component of the wind shear perturbation in y-direction
+        'dtauszb',                            # [-] Component of the wind shear perturbation in x-direction
+        'dtaunzb',                            # [-] Component of the wind shear perturbation in y-direction
         'udir',                             # [rad] Wind direction
         'zs',                               # [m] Water level above reference
         'Hs',                               # [m] Wave height
@@ -57,6 +62,7 @@ MODEL_STATE = {
         'alfau',                            # [rad] Real-world grid cell orientation around u
         'alfav',                            # [rad] Real-world grid cell orientation around v
         'zb',                               # [m] Bed level above reference
+        'zbold',                            # [NEW!]
         'S',                                # [-] Level of saturation
         'xu',                               # [m] 
         'yu',                               # [m] 
@@ -86,7 +92,9 @@ MODEL_STATE = {
         'stall',                            # TEMP!
         'zsepnofil',                        # TEMP!
         'dz',                               # TEMP!
+        'dz_avg',
         'zshear',
+        'zshearzb',
         'zf',                               # NEW! Fixer layer according to Pieter
         'dvegrho',                          # NEW!
         'vegrho',                           # NEW!
@@ -96,19 +104,28 @@ MODEL_STATE = {
         'tauTs',
         'zsep0',
         'tau0',
+        'tau0zb',
         'zsepshear',
         'ustar',
         'ustars',
         'ustarn',
         'ustar0',
+        'ustar0zb',
+        'ustarzb',
+        'ustarszb',
+        'ustarnzb',
+        'ustarzb',
         'Ts',                               # NEW! Dynamic adaption time
         'T0',
         'ls',
         'Ts2',
+        'temp1',
+        'temp2',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
         'Ct',                               # [kg/m^2] Instantaneous sediment concentration integrated over saltation height
+        'Cu0',
         'q',                                # [kg/m/s] Instantaneous sediment flux
         'qs',                               # [kg/m/s] Instantaneous sediment flux in x-direction
         'qn',                               # [kg/m/s] Instantaneous sediment flux in y-direction
@@ -127,6 +144,9 @@ MODEL_STATE = {
         'uu',                               # [m/s^2] Equilibrium sediment velocity NEW!
         'uus',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
         'uun',                              # [m/s^2] Equilibrium sediment velocity in y-direction NEW!
+        'uu0',                               # [m/s^2] Equilibrium sediment velocity NEW!
+        'uus0',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
+        'uun0',
         'dhs',
         'dhn',
     ),
@@ -137,7 +157,10 @@ MODEL_STATE = {
     ),
     ('ny','nx','nlayers','nfractions') : (
         'mass',                             # [kg/m^2] Sediment mass in bed
-    )
+    ),
+    ('ny','nx','nsavetimes') : (
+        'zb_avg',                           # [kg/m^2] Sediment mass in bed
+    )            
 }
 
 
@@ -157,7 +180,7 @@ DEFAULT_CONFIG = {
     'process_salt'        : False,              # Enable the process of salt
     'process_humidity'    : False,              # Enable the process of humidity
     'process_avalanche'   : True,               # NEW! Enable the process of avalanching
-    'process_inertia'     : True,               # NEW!
+    'process_inertia'     : False,               # NEW!
     'process_separation'  : True,               # NEW! Enable the separation bubble
     'th_grainsize'        : True,               # Enable wind velocity threshold based on grainsize
     'th_bedslope'         : False,              # Enable wind velocity threshold based on bedslope
@@ -197,6 +220,7 @@ DEFAULT_CONFIG = {
     'grain_dist'          : [1.],               # [-] Initial distribution of sediment fractions
     'nfractions'          : 1,                  # [-] Number of sediment fractions
     'nlayers'             : 3,                  # [-] Number of bed layers
+    'nsavetimes'          : 50,                 # [-] NEW! For vegetation
     'layer_thickness'     : .01,                # [m] Thickness of bed layers
     'g'                   : 9.81,               # [m/s^2] Gravitational constant
     'rhoa'                : 1.25,               # [kg/m^3] Air density
@@ -225,7 +249,7 @@ DEFAULT_CONFIG = {
     'Mcr_dyn'             : 33.,                # [-] NEW! 
     'M_sep'               : 11.,                # [-] NEW!
     'M_dSlope'            : 11.,                # [-] NEW!
-    'm_kCut'              : 2.,                # [-] NEW!
+    'm_kCut'              : 2.5,                 # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)
