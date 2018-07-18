@@ -284,19 +284,20 @@ class AeoLiS(IBmi):
             self.s.update(self.crank_nicolson())
         else:
             logger.log_and_raise('Unknown scheme [%s]' % self.p['scheme'], exc=ValueError)
-
+            
         # calculate changes
         self.s = aeolis.bed.old(self.s, self.p)
 
         # update bed
         self.s = aeolis.bed.update(self.s, self.p)
-        
+
         # avalanching
-        self.s = aeolis.bed.avalanche(self.s, self.p)
+        if self.p['_time']/self.p['dt'] % 1 == 0:
+            self.s = aeolis.bed.avalanche(self.s, self.p)
         
-        # calculate changes
-        self.s = aeolis.bed.changes(self.s, self.p)
-            
+        # calculate averages over time
+        self.s = aeolis.bed.time(self.s, self.p)
+        
         # grow vegetation
 #        self.s = aeolis.vegetation.germinate(self.s, self.p, self.l, self.t)
 #        self.s = aeolis.vegetation.grow(self.s, self.p, self.l, self.t)

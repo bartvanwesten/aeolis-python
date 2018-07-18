@@ -93,11 +93,14 @@ MODEL_STATE = {
         'zsepnofil',                        # TEMP!
         'dz',                               # TEMP!
         'dz_avg',
+        'zb_avg',
         'zshear',
         'zshearzb',
         'zf',                               # NEW! Fixer layer according to Pieter
-        'dvegrho',                          # NEW!
-        'vegrho',                           # NEW!
+        'drhoveg',                          # NEW!
+        'rhoveg',                           # NEW!
+        'dhveg',
+        'hveg',
         'germinate',                        # NEW!
         'dzdt',                             # NEW!
         'vegfac',                           # NEW!
@@ -121,10 +124,12 @@ MODEL_STATE = {
         'Ts2',
         'temp1',
         'temp2',
+        'gradh',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
         'Ct',                               # [kg/m^2] Instantaneous sediment concentration integrated over saltation height
+        'Ct_avg',
         'Cu0',
         'q',                                # [kg/m/s] Instantaneous sediment flux
         'qs',                               # [kg/m/s] Instantaneous sediment flux in x-direction
@@ -159,7 +164,11 @@ MODEL_STATE = {
         'mass',                             # [kg/m^2] Sediment mass in bed
     ),
     ('ny','nx','nsavetimes') : (
-        'zb_avg',                           # [kg/m^2] Sediment mass in bed
+        'zb_time',                           # NEW!
+        'dz_time',                           # NEW!
+    ),
+    ('ny','nx','nfractions','nsavetimes') : (
+        'Ct_time',                           # NEW!
     )            
 }
 
@@ -220,7 +229,7 @@ DEFAULT_CONFIG = {
     'grain_dist'          : [1.],               # [-] Initial distribution of sediment fractions
     'nfractions'          : 1,                  # [-] Number of sediment fractions
     'nlayers'             : 3,                  # [-] Number of bed layers
-    'nsavetimes'          : 50,                 # [-] NEW! For vegetation
+    'nsavetimes'          : 100,                # [-] NEW! For vegetation
     'layer_thickness'     : .01,                # [m] Thickness of bed layers
     'g'                   : 9.81,               # [m/s^2] Gravitational constant
     'rhoa'                : 1.25,               # [kg/m^3] Air density
@@ -247,9 +256,9 @@ DEFAULT_CONFIG = {
     'cpair'               : 1.0035e-3,          # [MJ/kg/oC] Specific heat capacity air
     'Mcr_stat'            : 34.,                # [-] NEW!
     'Mcr_dyn'             : 33.,                # [-] NEW! 
-    'M_sep'               : 11.,                # [-] NEW!
+    'M_sep'               : 30.,                # [-] NEW!
     'M_dSlope'            : 11.,                # [-] NEW!
-    'm_kCut'              : 2.5,                 # [-] NEW!
+    'm_kCut'              : 10.,                 # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)
@@ -266,6 +275,7 @@ DEFAULT_CONFIG = {
     'karman'              : 0.41,               # [-] von Karman constant
     'sedimentinput'       : .002,               # [kg/m/s] NEW!
     'fixed_layer'         : 0.0,                # NEW! Fixed layer according to Pieter
+    'numsep'              : 1.                  # NEW!
 }
 
 

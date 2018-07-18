@@ -36,51 +36,58 @@ logger = logging.getLogger(__name__)
 
 def germinate (s,p,l,t):
     
-    
-    
-    s['germinate'] += (t>0)*(s['dz'] > 0.)
+    s['germinate'] += (s['dz_avg'] > 0.)
     s['germinate'] = np.minimum(s['germinate'],1.)
     
     return s
         
-def grow (s, p, l, t):
+def grow_cdm (s, p, l, t):
     
-    tveg = 365.25*24.*3600. # [s]
-    gamma = 1. # [-]
+    Vveg_year = 15. # m/year
+    Vveg = Vveg_year / (365.25 * 24 * 3600) # m/s
     Hveg = 1. # [m]
+    
+    # From Marco 2011
+    
+    Vveg *= (s['dz_avg'] > 0.)
+    s['dhveg'] = Vveg * (1- s['hveg']/Hveg) - np.abs(s['dz_avg'])/p['dt']
+    s['hveg'] += s['dhveg']*p['dt']
+    
+    s['hveg'] = np.maximum(s['hveg'],0.)
 
-    s['dvegrho'] = (((1.-s['vegrho'])/tveg)-(gamma/Hveg)*np.abs((s['zb']-s['zbold']))/p['dt'])*s['germinate']
+    s['rhoveg'] = (s['hveg']/Hveg)**2.
     
-    s['vegrho'] += s['dvegrho']*p['dt']
-    s['vegrho'] = np.minimum(s['vegrho'],1.)
-    s['vegrho'] = np.maximum(s['vegrho'],0.)
-    
-#    s['germinate'] *= (s['vegrho']==0.)
+    # Germination has to happen again after vegetation died
+    s['germinate'] *= (s['rhoveg']!=0.)
     
     return s
     
+def grow (s, p):
+    
+    
+    
+    return s
+
 def vegshear(s, p):
     
-    roughness = 16. #16.
+    roughness = 16.
     
-    s['vegfac']= 1./(1. + roughness*s['vegrho'])
+    s['vegfac']= 1./(1. + roughness*s['rhoveg'])
     
-    s['ustars'] *= s['vegfac']
-    s['ustarn'] *= s['vegfac']
-    s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
+    ets = s['ustars']/s['ustar']
+    etn = s['ustarn']/s['ustar']
     
-#    m_kCut_veg = 1. #20
-#    
-#    taufft = np.fft.fft2(s['tau'])
-#    dk = 2.0 * np.pi / (np.max(s['x']))
-#    taufft *= np.exp(-(dk*s['x'])**2./(2.*m_kCut_veg**2.))
-#    s['tau'] = np.maximum(np.real(np.fft.ifft2(taufft)),0)
+    s['ustar'] *= s['vegfac']
+    
+    s['ustars'] = ets * s['ustar']
+    s['ustarn'] = etn * s['ustar']
     
     return s
     
 def initialize (s,p):
     
-    s['vegrho'][:,:] = 0.
+    s['hveg'][:,:] = 0.
+    s['rhoveg'][:,:] = 0.
     s['germinate'][:,:] = 0.
     
     return s

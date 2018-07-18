@@ -64,6 +64,7 @@ def initialize(s, p):
 
     # initialize bathymetry
     s['zb'][:,:] = p['bed_file']
+    s['zbold'][:,:] = s['zb'][:,:].copy()
 
     # initialize bed layers
     s['thlyr'][:,:,:] = p['layer_thickness']
@@ -93,21 +94,32 @@ def initialize(s, p):
         
     return s
 
-
-def old(s , p ):
+def old(s, p):
     
     s['zbold'] = s['zb'].copy()
     
     return s
 
-def changes(s, p):
+def time(s , p ):
     
-    s['dz'] = s['zb'] - s['zbold']
+    # Collect time steps
     
-    s['zb_avg'][:,:,:-1] = s['zb_avg'][:,:,1:]
-    s['zb_avg'][:,:,-1] = s['zb'].copy()
+    s['zb_time'][:,:,:-1] = s['zb_time'][:,:,1:].copy()
+    s['zb_time'][:,:,-1] = s['zb'].copy()
     
-    s['dz_avg'] = (s['zb_avg'][:,:,-1] - s['zb_avg'][:,:,0]) / p['nsavetimes']
+    s['Ct_time'][:,:,:,:-1] = s['Ct_time'][:,:,:,1:].copy()
+    s['Ct_time'][:,:,:,-1] = s['Ct'].copy()
+    
+    s['dz'] = s['zb']-s['zbold']
+    
+    s['dz_time'][:,:,:-1] = s['dz_time'][:,:,1:].copy()
+    s['dz_time'][:,:,-1] = s['dz'].copy()
+    
+    # Calculate average
+    
+    s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
+    s['dz_avg'] = s['dz_time'].sum(2) / p['nsavetimes']
+    s['zb_avg'] = s['zb_time'].sum(2) / p['nsavetimes']
     
     return s
 
@@ -560,11 +572,10 @@ def avalanche_8(s, p):
 #        v0 = np.sum(zb0*s['dsdnz'])
 #        v  = np.sum(zb*s['dsdnz'])
 #        print('v0=',v0,' v=',v)
-        
     
     return s
 
-def avalanche_cell_4(s, p):
+def avalanche_4_cell(s, p):
     
     if p['process_avalanche']:
     
@@ -576,7 +587,6 @@ def avalanche_cell_4(s, p):
         
         x = s['xz']
         y = s['yz']
-        
         
         # Calculation of ratio dsdn
         
@@ -623,8 +633,11 @@ def avalanche_cell_4(s, p):
         zb_center = np.zeros((ny,nx,4))
         zb_neighbour = np.zeros((ny,nx,4))
         
+        E = 1.0
+        max_iter = 100
+        
         # Start of the while-loop
-        for i in range(p['max_iter']):
+        for i in range(max_iter):
                     
             count+=1
             
@@ -661,7 +674,9 @@ def avalanche_cell_4(s, p):
                 break
             else:
             
-                flux = surplus * np.divide(surplus, total + surplus, out=np.zeros_like(surplus), where = total + surplus != 0)
+                ix = total + surplus != 0
+                flux[ix] = surplus[ix] * surplus[ix] / ( total[ix] + surplus[ix])
+                
                 totalflux = flux.sum(axis=2)
                 maxflux = flux.max(axis=2)
                 maxsurplus = surplus.max(axis=2)
@@ -678,11 +693,11 @@ def avalanche_cell_4(s, p):
                 fluxnorm = np.divide(a3, b3, out=np.zeros_like(a3), where = b3 != 0)
                 
                 #restribute sediment
-                zb          -= fluxnorm * totalflux# * dsdn_fac
-                zb[:,:-1]   += fluxnorm[:,1:] * flux[:,1:,1] * dsdn_fac[:,1:,1]
-                zb[:,1:]    += fluxnorm[:,:-1] * flux[:,:-1,0] * dsdn_fac[:,:-1,0]
-                zb[:-1,:]   += fluxnorm[1:,:] * flux[1:,:,3] * dsdn_fac[1:,:,3]
-                zb[1:,:]    += fluxnorm[:-1,:] * flux[:-1,:,2] * dsdn_fac[:-1,:,2]
+                zb          -= fluxnorm * totalflux * E
+                zb[:,:-1]   += fluxnorm[:,1:] * flux[:,1:,1] * dsdn_fac[:,1:,1] * E
+                zb[:,1:]    += fluxnorm[:,:-1] * flux[:,:-1,0] * dsdn_fac[:,:-1,0] * E
+                zb[:-1,:]   += fluxnorm[1:,:] * flux[1:,:,3] * dsdn_fac[1:,:,3] * E
+                zb[1:,:]    += fluxnorm[:-1,:] * flux[:-1,:,2] * dsdn_fac[:-1,:,2] * E
                 
                 #Boundary
                 zb[0,:]  = zb[1,:]
@@ -696,15 +711,16 @@ def avalanche(s,p):
     
     nx = p['nx']+1
     ny = p['ny']+1
-        
+    
+    zb = s['zb']
+    zn = s['zne']
+    
     ds = s['dsu']
     dn = s['dnv']
     
-    zb = s['zb']
-    
     #parameters
     
-#    tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
+    tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
     tan_dyn = np.tan(np.deg2rad(p['Mcr_dyn']))
     
     E = 0.9
@@ -712,48 +728,80 @@ def avalanche(s,p):
     grad_h_down = np.zeros((ny,nx,2))
     flux_down = np.zeros((ny,nx,2))
     slope_diff = np.zeros((ny,nx))
-    
-    # Calculation of slope (x-direction)
-    
-    grad_h_down[:,1:-1,0] = zb[:,1:-1] - zb[:,2:]
-    
-    ix = zb[:,2:] > zb[:,:-2]
-    grad_h_down[:,1:-1,0][ix] = - (zb[:,1:-1][ix] - zb[:,:-2][ix])
-    
-    # Calculation of slope (y-direction)
-    
-    grad_h_down[1:-1,:,1] = zb[1:-1,:] - zb[2:,:]
-    
-    ix = zb[2:,:] > zb[:-2,:]
-    grad_h_down[1:-1,:,1][ix] = - (zb[1:-1,:][ix] - zb[:-2,:][ix])
-    
-    # Calculation of slopes (x+y)
-    
-    grad_h_down[:,:,0] /= ds
-    grad_h_down[:,:,1] /= dn
-    
-    grad_h2 = np.abs(grad_h_down[:,:,0])**2 + np.abs(grad_h_down[:,:,1])**2
-    grad_h = np.sqrt(grad_h2)
-#    max_grad_h = np.max(grad_h)
 
-    # Calculation of flux
+    max_iter_ava = 20
     
-    ix = grad_h > tan_dyn
-    slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(E*tan_dyn)
+    for i in range(0,max_iter_ava):
+        
+        grad_h_down *= 0.
+        flux_down *= 0.
+        slope_diff *= 0.
+        
+        # Calculation of slope (positive x-direction)
     
-    ix = grad_h != 0
+        grad_h_down[:,1:-1,0] = zb[:,1:-1] - zb[:,2:]
+        
+        ix = zb[:,2:] > zb[:,:-2]
+        grad_h_down[:,1:-1,0][ix] = - (zb[:,1:-1][ix] - zb[:,:-2][ix])
+        
+        ix = np.logical_and(zb[:,2:]>zb[:,1:-1], zb[:,:-2]>zb[:,1:-1])
+        grad_h_down[:,1:-1,0][ix] = 0.
     
-    flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
-    flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
+        # Calculation of slope (y-direction)
     
-    # Calculation of change in bed level
+        grad_h_down[1:-1,:,1] = zb[1:-1,:] - zb[2:,:]
+        
+        ix = zb[2:,:] > zb[:-2,:]
+        grad_h_down[1:-1,:,1][ix] = - (zb[1:-1,:][ix] - zb[:-2,:][ix])
+        
+        ix = np.logical_and(zb[2:,:]>zb[1:-1,:], zb[:-2,:]>zb[1:-1,:])
+        grad_h_down[1:-1,:,1][ix] = 0.
+            
+        # Calculation of slopes (x+y)
+        
+        grad_h_down[:,0,:] = 0
+        grad_h_down[:,-1,:] = 0
+        grad_h_down[0,:,:] = 0
+        grad_h_down[-1,:,:] = 0
+        
+        grad_h_down[:,:,0] /= ds
+        grad_h_down[:,:,1] /= dn
+        
+        grad_h2 = grad_h_down[:,:,0]**2 + grad_h_down[:,:,1]**2
+        
+        ix = zb < zn + 0.005
+        grad_h2[ix] = 0.
+        
+        grad_h = np.sqrt(grad_h2)
+        max_grad_h = np.max(grad_h)
+        
+        if max_grad_h < tan_dyn:
+            break
+        
+        # Calculation of flux
+        grad_h_nonerod = (zb - zn) / ds
+        
+        ix = np.logical_and(grad_h > tan_dyn, grad_h_nonerod > 0)
+        slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(0.9*tan_dyn)
+        
+        ix = grad_h_nonerod < grad_h - tan_dyn 
+        slope_diff[ix] = np.tanh(grad_h_nonerod[ix])
+        
+        ix = grad_h != 0
+        
+        flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
+        flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
+        
+        # Calculation of change in bed level
+        
+        q_in = np.zeros((ny,nx))
+        
+        q_out = np.abs(flux_down[:,:,0]) + np.abs(flux_down[:,:,1])    
+        
+        q_in[1:-1,1:-1] = np.maximum(flux_down[1:-1,:-2,0],0.) - np.minimum(flux_down[1:-1,2:,0],0.) + np.maximum(flux_down[:-2,1:-1,1],0.) - np.minimum(flux_down[2:,1:-1,1],0.)
+        
+        zb += E * (q_in - q_out)
+        
+    s['zb'] = zb
     
-    q_in = np.zeros((ny,nx))
-    
-    q_out = np.abs(flux_down[:,:,0]) + np.abs(flux_down[:,:,1])
-    
-    q_in[1:-1,1:-1] = np.maximum(flux_down[1:-1,:-2,0],0.) - np.minimum(flux_down[1:-1,2:,0],0.) + np.maximum(flux_down[:-2,1:-1,1],0.) - np.minimum(flux_down[2:,1:-1,1],0.)
-    
-    s['zb'] += E * (q_in - q_out)
-
     return s
