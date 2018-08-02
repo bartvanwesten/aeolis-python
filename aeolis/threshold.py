@@ -348,7 +348,7 @@ def non_erodible(s, p): #NEW!
     
     s['zne'][:,:] = p['ne_file']
     
-#    # Hard method
+    # Hard method
 #    
 #    ix = s['zb']<=s['zne']
 #    s['uth'][ix] = np.inf

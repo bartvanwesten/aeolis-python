@@ -311,7 +311,7 @@ class WindShear:
 #                    
 #        self.igrid['z'][ix] = z * self.get_sigmoid(d)
         
-    def compute_shear(self, u0, nfilter=(1,4)):
+    def compute_shear(self, u0, nfilter=(1,2)):
         '''Compute wind shear perturbation for given free-flow wind speed on computational grid
         
         Parameters
@@ -334,13 +334,17 @@ class WindShear:
             return
                                 
         ny, nx = g['z'].shape
-        kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx, g['dx'])[:]+0.0000000001,
-                             2. * np.pi * np.fft.fftfreq(ny, g['dy'])[:]+0.0000000001)
+        kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx, g['dx'])[:]+0.000000000001,
+                             2. * np.pi * np.fft.fftfreq(ny, g['dy'])[:]+0.000000000001)
+        
+#        kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx, g['dx'])[:]+0.0000000001,
+#                             2. * np.pi * np.fft.fftfreq(ny, g['dy'])[:])
+
         
         hs = np.fft.fft2(g['z'])
         
         # Filter
-        hs = self.filter_highfrequenies(kx, ky, hs, nfilter, 0.2)
+        hs = self.filter_highfrequenies(kx, ky, hs, nfilter, 0.1)
         
 #        m_kCut_hs = 2.0
 #        

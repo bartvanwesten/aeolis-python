@@ -199,7 +199,7 @@ class AeoLiS(IBmi):
         self.s = aeolis.wind.initialize(self.s, self.p)
         
         # initialize vegetation model
-#        self.s = aeolis.vegetation.initialize(self.s, self.p)
+        self.s = aeolis.vegetation.initialize(self.s, self.p)
 
         
     def update(self, dt=-1):
@@ -241,7 +241,7 @@ class AeoLiS(IBmi):
         
         # filter separation bubble in x- and y-direction
 #        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'x', 2.)
-#        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 2.)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 1.)
         
         # calculate shear stresses over the combined bedlevel and separation bubble
         self.s = aeolis.wind.shear(self.s, self.p)
@@ -299,8 +299,8 @@ class AeoLiS(IBmi):
         self.s = aeolis.bed.time(self.s, self.p)
         
         # grow vegetation
-#        self.s = aeolis.vegetation.germinate(self.s, self.p, self.l, self.t)
-#        self.s = aeolis.vegetation.grow(self.s, self.p, self.l, self.t)
+#        self.s = aeolis.vegetation.germinate(self.s, self.p)
+#        self.s = aeolis.vegetation.grow(self.s, self.p)
 
         # increment time
         self.t += self.dt * self.p['accfac']
@@ -705,23 +705,33 @@ class AeoLiS(IBmi):
         
 #         define velocity fluxes
         ufs = np.zeros((p['ny']+1,p['nx']+1))
-        ufs[:,1:] = 0.5*s['uus'][:,:-1,0] + 0.5*s['uus'][:,1:,0]
+        ufs[1:-1,1:-1] = 0.25*s['uus'][2:,2:,0] + 0.25*s['uus'][2:,:-2,0] + 0.25*s['uus'][:-2,:-2,0] + 0.25*s['uus'][:-2,2:,0]
         ufn = np.zeros((p['ny']+1,p['nx']+1))
-        ufn[1:,:] = 0.5*s['uun'][:-1,:,0] + 0.5*s['uun'][1:,:,0]
+        ufn[1:-1,1:-1] = 0.25*s['uun'][2:,2:,0] + 0.25*s['uun'][2:,:-2,0] + 0.25*s['uun'][:-2,:-2,0] + 0.25*s['uun'][:-2,2:,0]
         
 #        boundary values
-        ufs[:,0]  = s['uus'][:,0,0]
-        if p['boundary_lateral'] == 'circular':
-            ufn[0,:] = 0.5*s['uun'][0,:,0] + 0.5*s['uun'][-1,:,0]
-        else:
-            ufn[0,:]  = s['uun'][0,:,0]
-        
+#        ufs[:,0]  = s['uus'][:,0,0]
+#        if p['boundary_lateral'] == 'circular':
+#            ufn[0,:] = 0.5*s['uun'][0,:,0] + 0.5*s['uun'][-1,:,0]
+#        else:
+#            ufn[0,:]  = s['uun'][0,:,0]
+#        
 #        ufs = s['uus'][:,:,0]
 #        ufn = s['uun'][:,:,0]
+        
+        ufs[:,0] = ufs[:,1]
+        ufs[:,-1] = ufs[:,-2]
+        ufs[0,:] = ufs[1,:]
+        ufs[-1,:] = ufs[-2,:]
+        
+        ufn[:,0] = ufn[:,1]
+        ufn[:,-1] = ufn[:,-2]
+        ufn[0,:] = ufn[1,:]
+        ufn[-1,:] = ufn[-2,:]
 
         # define matrix coefficients to solve linear system of equations
-        Cs = self.dt * s['dnz'] * s['dsdnzi'] * ufs
-        Cn = self.dt * s['dsz'] * s['dsdnzi'] * ufn
+        Cs = self.dt * ufs #* s['dnz'] * s['dsdnzi'] * ufs
+        Cn = self.dt * ufn #* s['dsz'] * s['dsdnzi'] * ufn
         Ti = self.dt / s['Ts']
 
         beta = abs(beta)
@@ -819,16 +829,37 @@ class AeoLiS(IBmi):
             logger.log_and_raise('Unknown lateral boundary condition [%s]' % self.p['boundary_lateral'], exc=ValueError)
 
         # construct sparse matrix
+#        if p['ny'] > 0:
+#            i = p['nx']+1
+#            A = scipy.sparse.diags((Apx.flatten()[-i:],
+#                                    Amx.flatten()[i:],
+#                                    Am2.flatten()[2:],
+#                                    Am1.flatten()[1:],
+#                                    A0.flatten(),
+#                                    Ap1.flatten()[:-1],
+#                                    Ap2.flatten()[:-2],
+#                                    Apx.flatten()[:-i],
+#                                    Amx.flatten()[:i]),
+#                                   (-i*p['ny'],-i,-2,-1,0,1,2,i,i*p['ny']), format='csr')
+#        else:
+#            A = scipy.sparse.diags((Am2.flatten()[2:],
+#                                    Am1.flatten()[1:],
+#                                    A0.flatten(),
+#                                    Ap1.flatten()[:-1],
+#                                    Ap2.flatten()[:-2]),
+#                                   (-2,-1,0,1,2), format='csr') 
+#            
+        # construct sparse matrix
         if p['ny'] > 0:
             i = p['nx']+1
-            A = scipy.sparse.diags((Apx.flatten()[-i:],
+            A = scipy.sparse.diags((Apx.flatten()[:i],
                                     Amx.flatten()[i:],
                                     Am2.flatten()[2:],
                                     Am1.flatten()[1:],
                                     A0.flatten(),
                                     Ap1.flatten()[:-1],
                                     Ap2.flatten()[:-2],
-                                    Apx.flatten()[:-i],
+                                    Apx.flatten()[i:],
                                     Amx.flatten()[:i]),
                                    (-i*p['ny'],-i,-2,-1,0,1,2,i,i*p['ny']), format='csr')
         else:
@@ -838,7 +869,6 @@ class AeoLiS(IBmi):
                                     Ap1.flatten()[:-1],
                                     Ap2.flatten()[:-2]),
                                    (-2,-1,0,1,2), format='csr')
-            
 
         # solve transport for each fraction separately using latest
         # available weights
@@ -1041,42 +1071,36 @@ class AeoLiS(IBmi):
         s['ugs'] = s['uus'][:,:,0].copy()
         s['ugn'] = s['uun'][:,:,0].copy()
         
-#        #TEMP!
-#        ug = np.zeros(s['uus'].shape)
-#        ugs = np.zeros(s['uus'].shape)
-#        ugn = np.zeros(s['uus'].shape)
-#        ugs[:,:,:] = 1.25 # m/s
-#        ugn[:,:,:] = 0. #m/s
-#        s['ugs'][:,:] = ugs[:,:,0]
-#        s['ugn'][:,:] = ugn[:,:,0]
-        
         # if qflag : # te gevaarlijk voor kleine Ct, daarom commented
             # ugs[ix] = qs[ix] / Ct[ix] #let op want voor kleine Ct kan dit gevaarlijk zijn...
             # ugn[ix] = qn[ix] / Ct[ix]
 #        s['ugs'] = np.sum(w * ugs,axis=-1) #slechts 1 transportsnelheid voor alle fracties
 #        s['ugn'] = np.sum(w * ugn,axis=-1)
 
-        #alternative (as in original aeolis model): set grain velocity to wind velocity
-        #s['ugs'] = s['uws']
-        #s['ugn'] = s['uwn']
-
-        #define velocity fluxes
+#        #define velocity fluxes
+#        ufs = np.zeros((p['ny']+1,p['nx']+2))
+#        ufs[:,1:-1] = 0.5*s['ugs'][:,:-1] + 0.5*s['ugs'][:,1:]
+#        ufn = np.zeros((p['ny']+2,p['nx']+1))
+#        ufn[1:-1,:] = 0.5*s['ugn'][:-1,:] + 0.5*s['ugn'][1:,:]
+#        #boundary values
+#        ufs[:,0]  = s['ugs'][:,0]
+#        ufs[:,-1] = s['ugs'][:,-1]
+#        if p['boundary_lateral'] == 'circular':
+#            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
+#            ufn[-1,:] = ufn[0,:]
+#        else:
+#            ufn[0,:]  = s['ugn'][0,:]
+#            ufn[-1,:] = s['ugn'][-1,:]
+#            
+#        ufs = np.zeros((p['ny']+1,p['nx']+2))
+#        ufs[1:-1,2:-1] = 0.25*s['uus'][2:,2:,0] + 0.25*s['uus'][2:,:-2,0] + 0.25*s['uus'][:-2,:-2,0] + 0.25*s['uus'][:-2,2:,0]
+#        ufn = np.zeros((p['ny']+2,p['nx']+1))
+#        ufn[2:-1,1:-1] = 0.25*s['uun'][2:,2:,0] + 0.25*s['uun'][2:,:-2,0] + 0.25*s['uun'][:-2,:-2,0] + 0.25*s['uun'][:-2,2:,0]
+#        
         ufs = np.zeros((p['ny']+1,p['nx']+2))
-        ufs[:,1:-1] = 0.5*s['ugs'][:,:-1] + 0.5*s['ugs'][:,1:]
+        ufs[1:-1,2:-1] = s['uus'][1:-1,1:-1,0]
         ufn = np.zeros((p['ny']+2,p['nx']+1))
-        ufn[1:-1,:] = 0.5*s['ugn'][:-1,:] + 0.5*s['ugn'][1:,:]
-        #boundary values
-        ufs[:,0]  = s['ugs'][:,0]
-        ufs[:,-1] = s['ugs'][:,-1]
-        if p['boundary_lateral'] == 'circular':
-            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
-            ufn[-1,:] = ufn[0,:]
-        else:
-            ufn[0,:]  = s['ugn'][0,:]
-            ufn[-1,:] = s['ugn'][-1,:]
-            
-#        ufs[:,:] = 0.
-#        ufn[:,:] = 0.
+        ufn[2:-1,1:-1] = 0.5*s['uun'][2:,1:-1,0] + 0.5*s['uun'][:-2,1:-1,0]
         
         beta = abs(beta)
         if beta >= 1.:

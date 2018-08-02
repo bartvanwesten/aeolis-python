@@ -168,7 +168,7 @@ def grainspeed(s,p):
     etn0 = 0.
 
     dh[:,:,:] = np.hypot(dhs,dhn)
-    et[:,:,:] = 1.#np.hypot(ets,etn)
+    et[:,:,:] = np.hypot(ets,etn)
     
     dh0[:,:,:] = 1.
     et0[:,:,:] = 1.
@@ -332,21 +332,21 @@ def saturation_time(s,p):
     Ts      = np.zeros(ustar.shape)
     Ts      = 2*s['uu']*alfa/(g*rgamma)/((ustar/uth)**2-1)
     
-    Tsmax   = 10.
+    Tsmax   = 3.
     Tsmin   = 0.01
     
     ix      = ustar <= uth0
-    Ts[ix]  = 10.0
+    Ts[ix]  = 3.0
     
 #    T0      = 1.75 * ustar0 / g   
 #    Ts0     = T0 * (uth0/(ustar0-uth0)) / rgamma[0]
 
     ix      = zsep > 0.1
-    Ts[ix]  = 0.01
+    Ts[ix]  = .01
 
     # Range
     Ts = np.maximum(np.minimum(Ts,Tsmax),Tsmin) 
-    s['Ts'][:,:] = p['T'] #Ts[:,:,0]
+    s['Ts'][:,:] = p['T']#Ts[:,:,0]
 
     # Filter
 #    

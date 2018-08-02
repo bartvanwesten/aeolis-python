@@ -102,24 +102,21 @@ def old(s, p):
 
 def time(s , p ):
     
-    # Collect time steps
-    
-    s['zb_time'][:,:,:-1] = s['zb_time'][:,:,1:].copy()
-    s['zb_time'][:,:,-1] = s['zb'].copy()
-    
-    s['Ct_time'][:,:,:,:-1] = s['Ct_time'][:,:,:,1:].copy()
-    s['Ct_time'][:,:,:,-1] = s['Ct'].copy()
-    
-    s['dz'] = s['zb']-s['zbold']
-    
-    s['dz_time'][:,:,:-1] = s['dz_time'][:,:,1:].copy()
-    s['dz_time'][:,:,-1] = s['dz'].copy()
-    
-    # Calculate average
-    
-    s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
-    s['dz_avg'] = s['dz_time'].sum(2) / p['nsavetimes']
-    s['zb_avg'] = s['zb_time'].sum(2) / p['nsavetimes']
+#    # Collect time steps
+#
+#    s['Ct_time'][:,:,:,:-1] = s['Ct_time'][:,:,:,1:].copy()
+#    s['Ct_time'][:,:,:,-1] = s['Ct'].copy()
+#
+#    # Calculate average
+#    s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
+            
+    if p['_time'] % p['dz_interval'] == 0.:
+                
+        s['dz_avg'] = (s['zb'] - s['zbold'])/p['dz_interval']
+        
+        s['zbold'] = s['zb'].copy()
+        
+        s['dzyear'] = s['dz_avg'] * 3600. * 24. * 365.25
     
     return s
 
@@ -410,15 +407,18 @@ def mixtoplayer(s, p):
     return s
 
 # NEW!
-def avalanche_8(s, p):
+def avalanche_8_cell(s, p):
     
     if p['process_avalanche']:
     
         nx = p['nx']+1
         ny = p['ny']+1
         
-        ds = s['dsu']
-        dn = s['dnv']
+#        ds = s['dsu']
+#        dn = s['dnv']
+        
+        dx = 1.
+#        dy = 1.
         
         x = s['xz']
         y = s['yz']
@@ -450,24 +450,24 @@ def avalanche_8(s, p):
         #statdyndiff =    np.zeros((NY+1,NX+1,8))+1000
         
         # Calculation of dh_stat
-        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:-1]) #Negative X-direction
-        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,1:]) #Positive X-direction
-        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*(dn[:-1,:]) #Negative Y-direction
-        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*(dn[1:,:]) #Positive Y-direction
-        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
+        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*dx#(ds[:,:-1]) #Negative X-direction
+        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*dx#(ds[:,1:]) #Positive X-direction
+        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*dx#(dn[:-1,:]) #Negative Y-direction
+        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*dx#(dn[1:,:]) #Positive Y-direction
+        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
+        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
+        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
+        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
         # Calculation of dh_dyn
-        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:-1]) #Negative X-direction
-        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,1:]) #Positive X-direction
-        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:-1,:]) #Negative Y-direction
-        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*(dn[1:,:]) #Positive Y-direction
-        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
+        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*dx#(ds[:,:-1]) #Negative X-direction
+        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*dx#(ds[:,1:]) #Positive X-direction
+        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*dx#(dn[:-1,:]) #Negative Y-direction
+        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*dx#(dn[1:,:]) #Positive Y-direction
+        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
+        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
+        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
+        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
         
         # Calculation of statdyndiff
         statdyndiff = dh_stat - dh_dyn
@@ -712,12 +712,6 @@ def avalanche(s,p):
     nx = p['nx']+1
     ny = p['ny']+1
     
-    zb = s['zb']
-    zn = s['zne']
-    
-    ds = s['dsu']
-    dn = s['dnv']
-    
     #parameters
     
     tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
@@ -725,83 +719,139 @@ def avalanche(s,p):
     
     E = 0.9
     
-    grad_h_down = np.zeros((ny,nx,2))
-    flux_down = np.zeros((ny,nx,2))
+    grad_h_down = np.zeros((ny,nx,4))
+    flux_down = np.zeros((ny,nx,4))
     slope_diff = np.zeros((ny,nx))
+    grad_h = np.zeros((ny,nx))
 
-    max_iter_ava = 20
+    max_iter_ava = 200
     
-    for i in range(0,max_iter_ava):
-        
-        grad_h_down *= 0.
-        flux_down *= 0.
-        slope_diff *= 0.
-        
-        # Calculation of slope (positive x-direction)
+    s, max_grad_h, grad_h, grad_h_down = calc_grad(s, p)
     
-        grad_h_down[:,1:-1,0] = zb[:,1:-1] - zb[:,2:]
-        
-        ix = zb[:,2:] > zb[:,:-2]
-        grad_h_down[:,1:-1,0][ix] = - (zb[:,1:-1][ix] - zb[:,:-2][ix])
-        
-        ix = np.logical_and(zb[:,2:]>zb[:,1:-1], zb[:,:-2]>zb[:,1:-1])
-        grad_h_down[:,1:-1,0][ix] = 0.
+    if max_grad_h > tan_stat:
     
-        # Calculation of slope (y-direction)
-    
-        grad_h_down[1:-1,:,1] = zb[1:-1,:] - zb[2:,:]
-        
-        ix = zb[2:,:] > zb[:-2,:]
-        grad_h_down[1:-1,:,1][ix] = - (zb[1:-1,:][ix] - zb[:-2,:][ix])
-        
-        ix = np.logical_and(zb[2:,:]>zb[1:-1,:], zb[:-2,:]>zb[1:-1,:])
-        grad_h_down[1:-1,:,1][ix] = 0.
+        for i in range(0,max_iter_ava):
             
-        # Calculation of slopes (x+y)
+            grad_h_down *= 0.
+            flux_down *= 0.
+            slope_diff *= 0.
+            grad_h *= 0.
+            
+            s, max_grad_h, grad_h, grad_h_down = calc_grad(s, p)
         
-        grad_h_down[:,0,:] = 0
-        grad_h_down[:,-1,:] = 0
-        grad_h_down[0,:,:] = 0
-        grad_h_down[-1,:,:] = 0
-        
-        grad_h_down[:,:,0] /= ds
-        grad_h_down[:,:,1] /= dn
-        
-        grad_h2 = grad_h_down[:,:,0]**2 + grad_h_down[:,:,1]**2
-        
-        ix = zb < zn + 0.005
-        grad_h2[ix] = 0.
-        
-        grad_h = np.sqrt(grad_h2)
-        max_grad_h = np.max(grad_h)
-        
-        if max_grad_h < tan_dyn:
-            break
-        
-        # Calculation of flux
-        grad_h_nonerod = (zb - zn) / ds
-        
-        ix = np.logical_and(grad_h > tan_dyn, grad_h_nonerod > 0)
-        slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(0.9*tan_dyn)
-        
-        ix = grad_h_nonerod < grad_h - tan_dyn 
-        slope_diff[ix] = np.tanh(grad_h_nonerod[ix])
-        
-        ix = grad_h != 0
-        
-        flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
-        flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
-        
-        # Calculation of change in bed level
-        
-        q_in = np.zeros((ny,nx))
-        
-        q_out = np.abs(flux_down[:,:,0]) + np.abs(flux_down[:,:,1])    
-        
-        q_in[1:-1,1:-1] = np.maximum(flux_down[1:-1,:-2,0],0.) - np.minimum(flux_down[1:-1,2:,0],0.) + np.maximum(flux_down[:-2,1:-1,1],0.) - np.minimum(flux_down[2:,1:-1,1],0.)
-        
-        zb += E * (q_in - q_out)
-        
-    s['zb'] = zb
-    
+            if max_grad_h < tan_dyn:
+                break
+            
+            # Calculation of flux
+            
+            grad_h_nonerod = (s['zb'] - s['zne']) / s['dsu'] # HAS TO BE ADJUSTED!
+            
+            ix = np.logical_and(grad_h > tan_dyn, grad_h_nonerod > 0)
+            slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(0.9*tan_dyn)
+            
+            ix = grad_h_nonerod < grad_h - tan_dyn 
+            slope_diff[ix] = np.tanh(grad_h_nonerod[ix])
+            
+            ix = grad_h != 0
+            
+            flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
+            flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
+            flux_down[:,:,2][ix] = slope_diff[ix] * grad_h_down[:,:,2][ix] / grad_h[ix]
+            flux_down[:,:,3][ix] = slope_diff[ix] * grad_h_down[:,:,3][ix] / grad_h[ix]
+            
+            # Calculation of change in bed level
+            
+            q_in = np.zeros((ny,nx))
+            
+            q_out = 0.5*np.abs(flux_down[:,:,0]) + 0.5* np.abs(flux_down[:,:,1]) + 0.5*np.abs(flux_down[:,:,2]) + 0.5* np.abs(flux_down[:,:,3])
+            
+            q_in[1:-1,1:-1] =   0.5*(np.maximum(flux_down[1:-1,:-2,0],0.) \
+                                - np.minimum(flux_down[1:-1,2:,0],0.) \
+                                + np.maximum(flux_down[:-2,1:-1,1],0.) \
+                                - np.minimum(flux_down[2:,1:-1,1],0.) \
+                                
+                                + np.maximum(flux_down[1:-1,2:,2],0.) \
+                                - np.minimum(flux_down[1:-1,:-2,2],0.) \
+                                + np.maximum(flux_down[2:,1:-1,3],0.) \
+                                - np.minimum(flux_down[:-2,1:-1,3],0.) )
+            
+            s['zb'] += E * (q_in - q_out)
+
     return s
+
+def calc_grad(s,p):
+    
+    zb = s['zb']
+    
+    nx = p['nx']+1
+    ny = p['ny']+1
+    
+    ds = s['dsu']
+    dn = s['dnv']
+    
+    grad_h_down = np.zeros((ny,nx,4))
+    
+# Calculation of slope (positive x-direction)
+
+    grad_h_down[:,1:-1,0] = zb[:,1:-1] - zb[:,2:]
+    
+    ix = zb[:,2:] > zb[:,:-2]
+    grad_h_down[:,1:-1,0][ix] = - (zb[:,1:-1][ix] - zb[:,:-2][ix])
+    
+    ix = np.logical_and(zb[:,2:]>zb[:,1:-1], zb[:,:-2]>zb[:,1:-1])
+    grad_h_down[:,1:-1,0][ix] = 0.
+
+    # Calculation of slope (positive y-direction)
+
+    grad_h_down[1:-1,:,1] = zb[1:-1,:] - zb[2:,:]
+    
+    ix = zb[2:,:] > zb[:-2,:]
+    grad_h_down[1:-1,:,1][ix] = - (zb[1:-1,:][ix] - zb[:-2,:][ix])
+    
+    ix = np.logical_and(zb[2:,:]>zb[1:-1,:], zb[:-2,:]>zb[1:-1,:])
+    grad_h_down[1:-1,:,1][ix] = 0.
+    
+    # Calculation of slope (negative x-direction)
+
+    grad_h_down[:,1:-1,2] = zb[:,1:-1] - zb[:,:-2]
+    
+    ix = zb[:,:-2] > zb[:,2:]
+    grad_h_down[:,1:-1,2][ix] = - (zb[:,1:-1][ix] - zb[:,2:][ix])
+    
+    ix = np.logical_and(zb[:,:-2]>zb[:,1:-1], zb[:,2:]>zb[:,1:-1])
+    grad_h_down[:,1:-1,2][ix] = 0.
+    
+    # Calculation of slope (negative y-direction)
+
+    grad_h_down[1:-1,:,3] = zb[1:-1,:] - zb[:-2,:]
+    
+    ix = zb[:-2,:] > zb[2:,:]
+    grad_h_down[1:-1,:,3][ix] = - (zb[1:-1,:][ix] - zb[2:,:][ix])
+    
+    ix = np.logical_and(zb[:-2,:]>zb[1:-1,:], zb[2:,:]>zb[1:-1,:])
+    grad_h_down[1:-1,:,3][ix] = 0.
+        
+    # Calculation of slopes (x+y)
+    
+    grad_h_down[:,0,:] = 0
+    grad_h_down[:,-1,:] = 0
+    grad_h_down[0,:,:] = 0
+    grad_h_down[-1,:,:] = 0
+    
+    grad_h_down[:,:,0] /= ds
+    grad_h_down[:,:,1] /= dn
+    grad_h_down[:,:,2] /= ds
+    grad_h_down[:,:,3] /= dn
+    
+    grad_h2 = 0.5*grad_h_down[:,:,0]**2 + 0.5*grad_h_down[:,:,1]**2 + 0.5*grad_h_down[:,:,2]**2 + 0.5*grad_h_down[:,:,3]**2
+    
+    ix = s['zb'] < s['zne'] + 0.005
+    grad_h2[ix] = 0.
+    
+    grad_h = np.sqrt(grad_h2)
+    
+    s['gradh'] = grad_h.copy()
+    
+    max_grad_h = np.max(grad_h)
+    
+    return s, max_grad_h, grad_h, grad_h_down

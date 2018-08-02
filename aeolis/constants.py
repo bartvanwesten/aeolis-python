@@ -93,6 +93,7 @@ MODEL_STATE = {
         'zsepnofil',                        # TEMP!
         'dz',                               # TEMP!
         'dz_avg',
+        'dzyear',                           # NEW!
         'zb_avg',
         'zshear',
         'zshearzb',
@@ -101,6 +102,7 @@ MODEL_STATE = {
         'rhoveg',                           # NEW!
         'dhveg',
         'hveg',
+        'Hveg',
         'germinate',                        # NEW!
         'dzdt',                             # NEW!
         'vegfac',                           # NEW!
@@ -162,13 +164,13 @@ MODEL_STATE = {
     ),
     ('ny','nx','nlayers','nfractions') : (
         'mass',                             # [kg/m^2] Sediment mass in bed
-    ),
-    ('ny','nx','nsavetimes') : (
-        'zb_time',                           # NEW!
-        'dz_time',                           # NEW!
-    ),
-    ('ny','nx','nfractions','nsavetimes') : (
-        'Ct_time',                           # NEW!
+#    ),
+#    ('ny','nx','nsavetimes') : (
+#        'zb_time',                           # NEW!
+#        'dz_time',                           # NEW!
+#    ),
+#    ('ny','nx','nfractions','nsavetimes') : (
+#        'Ct_time',                           # NEW!
     )            
 }
 
@@ -229,7 +231,8 @@ DEFAULT_CONFIG = {
     'grain_dist'          : [1.],               # [-] Initial distribution of sediment fractions
     'nfractions'          : 1,                  # [-] Number of sediment fractions
     'nlayers'             : 3,                  # [-] Number of bed layers
-    'nsavetimes'          : 100,                # [-] NEW! For vegetation
+    'nsavetimes'          : 20,                 # [-] NEW! For smoother results
+    'dz_interval'         : 1209600.,           # [s] NEW! For vegetation
     'layer_thickness'     : .01,                # [m] Thickness of bed layers
     'g'                   : 9.81,               # [m/s^2] Gravitational constant
     'rhoa'                : 1.25,               # [kg/m^3] Air density
@@ -258,7 +261,7 @@ DEFAULT_CONFIG = {
     'Mcr_dyn'             : 33.,                # [-] NEW! 
     'M_sep'               : 30.,                # [-] NEW!
     'M_dSlope'            : 11.,                # [-] NEW!
-    'm_kCut'              : 10.,                 # [-] NEW!
+    'm_kCut'              : 2.,                # [-] NEW!
     'scheme'              : 'euler_backward',   # Name of numerical scheme (euler_forward, euler_backward or crank_nicolson)
     'boundary_lateral'    : 'circular',         # Name of lateral boundary conditions (circular, noflux)
     'boundary_offshore'   : 'noflux',           # Name of lateral boundary conditions (gradient, noflux)
@@ -275,7 +278,13 @@ DEFAULT_CONFIG = {
     'karman'              : 0.41,               # [-] von Karman constant
     'sedimentinput'       : .002,               # [kg/m/s] NEW!
     'fixed_layer'         : 0.0,                # NEW! Fixed layer according to Pieter
-    'numsep'              : 1.                  # NEW!
+    'tveg'                : 3.,                 # NEW! [days] default: 3
+    'eroveg'              : 1.,                 # NEW! default: 1
+    'Hveg'                : 1.,
+    'V_ver'               : 2.,                 # NEW! [1/year]
+    'V_lat'               : 0.,                 # NEW! [m/year]
+    'dz_opt'              : 0.0,                # NEW! [m/year]
+    'dz_tol'              : 0.05                 # NEW! [m/year]
 }
 
 

@@ -88,37 +88,37 @@ def separation_shear(s,p):
 ##    s['uu'][:,2:-2] += (edge[:,3:-1] == 1) * s['uu'][:,1:-3]*1.02 #(s['uu'][:,1:-3]+1*np.abs((s['uu'][:,1:-3]-s['uu'][:,:-4])))
         
     
-    # Calculte ustar and tau
-    
-    ets = np.zeros(s['zb'].shape)
-    etn = np.zeros(s['zb'].shape)
+        # Calculte ustar and tau
         
-    ix = s['ustar'] != 0.
-    ets[ix] = s['ustars'][ix]/s['ustar'][ix]
-    etn[ix] = s['ustarn'][ix]/s['ustar'][ix]
+        ets = np.zeros(s['zb'].shape)
+        etn = np.zeros(s['zb'].shape)
+            
+        ix = s['ustar'] != 0.
+        ets[ix] = s['ustars'][ix]/s['ustar'][ix]
+        etn[ix] = s['ustarn'][ix]/s['ustar'][ix]
+            
+        s['tau'] = p['rhoa']*s['ustar']**2
+    
+        s['taus'] = s['tau']*ets
+        s['taun'] = s['tau']*etn
         
-    s['tau'] = p['rhoa']*s['ustar']**2
-
-    s['taus'] = s['tau']*ets
-    s['taun'] = s['tau']*etn
-    
-    s['ustars'] = s['ustar']*ets
-    s['ustarn'] = s['ustar']*etn
-    
-    # uu
-    
-    ets = np.zeros(s['uu'].shape)
-    etn = np.zeros(s['uu'].shape)
+        s['ustars'] = s['ustar']*ets
+        s['ustarn'] = s['ustar']*etn
         
-    ix = s['uu'] != 0.
-    ets[ix] = s['uus'][ix]/s['uu'][ix]
-    etn[ix] = s['uun'][ix]/s['uu'][ix]
-    
-    s['uus'] = s['uu']*ets
-    s['uun'] = s['uu']*etn
+        # uu
         
-    s['Ts'] *= s['zsepdelta']
-    s['Ts'] = np.maximum(s['Ts'],0.001)
+        ets = np.zeros(s['uu'].shape)
+        etn = np.zeros(s['uu'].shape)
+            
+        ix = s['uu'] != 0.
+        ets[ix] = s['uus'][ix]/s['uu'][ix]
+        etn[ix] = s['uun'][ix]/s['uu'][ix]
+        
+        s['uus'] = s['uu']*ets
+        s['uun'] = s['uu']*etn
+        
+#    s['Ts'] *= s['zsepdelta']
+#    s['Ts'] = np.maximum(s['Ts'],0.001)
         
 #    s['tau'] = np.hypot(s['taus'],s['taun'])
 #    s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
@@ -127,7 +127,7 @@ def separation_shear(s,p):
 
 def separation(s, p):
     
-    if p['process_separation']:
+    if p['process_separation'] or 1 ==1 :
         
         # Initialize grid and bed dimensions
          
@@ -164,9 +164,9 @@ def separation(s, p):
                     bubble[j, i-1] = 1. # -0
                     
 #         In order to reduce the amount of separation bubbles in y-direction to one. JUST TEMP!
-            for i in range(0,nx):
-                if np.sum(bubble[j,:i-2])>0.:
-                    bubble[j, i] = 0.
+#            for i in range(0,nx):
+#                if np.sum(bubble[j,:i-1])>0.:
+#                    bubble[j, i] = 0.
                 
         s['stall']=stall
         s['bubble']=bubble
@@ -191,7 +191,7 @@ def separation(s, p):
                     xb = x[j,i]
                     hb = h[j,i]
                     
-                    dhdx0 = (z[j,i]-z[j,i-2])/(2.*dx)
+                    dhdx0 = (z[j,i]-z[j,i-2])/(2*dx)
                     
                     # Separation bubble for shear stresses
                     
@@ -228,7 +228,7 @@ def poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h, slope):
     
     a = dhdx / slope
     
-    l = np.maximum((1.5 * hb / slope) * (1 + a*0.25 + 0.125*a**2),.1)
+    l = np.minimum(np.maximum((1.5 * hb / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
     
     a3 = 2*hb/l**3 + dhdx/l**2
     a2 = -3*hb/l**2 - 2*dhdx/l

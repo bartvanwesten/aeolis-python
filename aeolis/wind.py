@@ -155,8 +155,8 @@ def shear(s,p):
         
         s['zshear'] = s['zb'].copy()
         
-        ix = s['zsepshear'] > s['zb']
-        s['zshear'][ix] = s['zsepshear'][ix]
+        ix = s['zsep'] > s['zb']
+        s['zshear'][ix] = s['zsep'][ix]
         
         # zshear
         
@@ -169,44 +169,29 @@ def shear(s,p):
         for j in range(0,p['ny']):
             avg = np.average(s['dtaus'][j,:2])
             s['dtaus'][j,:] -= avg
-        
+            
+        s['dtaus'] = np.maximum(s['dtaus'],-1.)
         s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
         
         # set minimum of taus to zero
         s['taus']=np.maximum(s['taus'],0.)
         s['tau'] = np.hypot(s['taus'], s['taun'])
         
-#        # set boundaries
-#        s['tau'][:,0] = s['tau0'][:,0]
-#        s['taus'][:,0] = s['tau0'][:,0]
-#        s['taun'][:,0] = 0.
+        # set boundaries
+        s['tau'][:,0] = s['tau0'][:,0]
+        s['taus'][:,0] = s['tau0'][:,0]
+        s['taun'][:,0] = 0.
         
         # Method 1: According to Duran 2010 
 #        s['ustars'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taus']/s['tau']
 #        s['ustarn'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taun']/s['tau']
 #        s['ustar'] = np.hypot(s['ustars'], s['ustarn'])
         
-        # Save ustar
-#        s['ustar1'] = s['ustar'].copy()
-#        s['ustars1'] = s['ustars'].copy()
-#        s['ustarn1'] = s['ustarn'].copy()
-        
         # Method 2
         s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
         s['ustars'] = s['ustar']*s['taus']/s['tau']
         s['ustarn'] = s['ustar']*s['taun']/s['tau']
-        
-        # Method 3
-        
-#        s['ustars'] = np.sqrt(s['taus']/p['rhoa'])
-#        
-#        ix = s['taun'] >= 0.
-#        s['ustarn'][ix] = np.sqrt(s['taun'][ix]/p['rhoa'])
-#        ix = s['taun'] < 0.
-#        s['ustarn'][ix] = -np.sqrt(-s['taun'][ix]/p['rhoa'])
-#        
-#        s['ustar'] = np.hypot(s['ustars'], s['ustars'])
-        
+
     return s
 
 def get_velocity_at_height(u, z, z0, z1=None):
@@ -245,7 +230,7 @@ def filter_low(s, p, par, direction, Cut):
     
     parfft = np.fft.fft2(s[par])
     dk = 2.0 * np.pi / np.max(s[direction])
-    fac = np.exp(-(dk*s[direction]**2.)/(2.*Cut**2.))
+    fac = np.exp(-((dk*s[direction])**2.)/(2.*Cut**2.))
     parfft *= fac
     s[par] = np.real(np.fft.ifft2(parfft))
     
