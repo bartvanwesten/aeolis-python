@@ -40,29 +40,38 @@ def initialize (s,p):
     s['hveg'][:,:] = 0.
     s['rhoveg'][:,:] = 0.
     s['germinate'][:,:] = 0.
+    s['lateral'][:,:] = 0.
     
     return s
 
 def germinate (s,p):
     
-    s['germinate'] += np.logical_and(s['dz_avg'] > 0., p['_time'] > 2*p['dz_interval'])
-    s['germinate'] = np.minimum(s['germinate'],1.)
-    s['germinate'][:,:20] = 0.
+    # time
+    
+    n = (30*24*3600/p['dt'])
+#    n_year = (365.25*24*3600/p['dt'])
+    
+    # Germination
+    
+    p_germinate_month = 0.005 # / month
+    p_germinate_dt = 1-(1-p_germinate_month)**(1/n)
+    germination = np.random.random((s['germinate'].shape))
+    
+    s['germinate'] += (s['dz_avg'] >= 0.) * (p['_time'] > p['dz_interval']) * (germination <= p_germinate_dt)
+    
     s['germinate'][:10,:] = 0.
     s['germinate'][-10:,:] = 0.
+    s['germinate'][:,-10:] = 0.
     
-    return s
-
-def grow (s, p):
+    s['germinate'] = np.minimum(s['germinate'],1.)
     
-    ix = s['germinate'] != 0.
+    # Lateral expension
     
-    V_ver = p['V_ver']/(365.25*24*3600)
-    V_lat = p['V_lat']/(365.25*24*3600)
-
-    s['drhoveg'][:,:] *= 0.
+    p_lateral_month = .99 # / year
+    p_lateral_dt = 1-(1-p_lateral_month)**(1/n)
     
-    # Determine vegetation cover gradients
+#    print(p_lateral_dt)
+#    print(p_lateral_month/n)
     
     drhoveg = np.zeros((p['ny']+1, p['nx']+1, 4))
     
@@ -70,9 +79,40 @@ def grow (s, p):
     drhoveg[:,:-1,1] = np.maximum((s['rhoveg'][:,1:]-s['rhoveg'][:,:-1]) / s['dsu'][:,:-1], 0.)  # negative x-direction
     drhoveg[1:,:,2] = np.maximum((s['rhoveg'][:-1,:]-s['rhoveg'][1:,:]) / s['dnu'][1:,:], 0.)  # positive y-direction
     drhoveg[:-1,:,3] = np.maximum((s['rhoveg'][1:,:]-s['rhoveg'][:-1,:]) / s['dnu'][:-1,:], 0.)  # negative y-direction
+
+    s['dxrhoveg'] = (np.sum(drhoveg[:,:,:],2)>0.)
     
+    p_lateral = p_lateral_dt * s['dxrhoveg']
+    s['lateral'] += (germination <= p_lateral)
+    s['lateral'] = np.minimum(s['lateral'],1.)
+    
+    s['lateral'][:10,:] = 0.
+    s['lateral'][-10:,:] = 0.
+    s['lateral'][:,-10:] = 0.
+
+    return s
+
+def grow (s, p):
+    
+    ix = np.logical_or(s['germinate'] != 0., s['lateral'] != 0.)
+    
+    V_ver = p['V_ver']/(365.25*24*3600)
+#    V_lat = p['V_lat']/(365.25*24*3600)
+
+    s['drhoveg'][:,:] *= 0.
+    
+    # Determine vegetation cover gradients
+    
+#    drhoveg = np.zeros((p['ny']+1, p['nx']+1, 4))
+#    
+#    drhoveg[:,1:,0] = np.maximum((s['rhoveg'][:,:-1]-s['rhoveg'][:,1:]) / s['dsu'][:,1:], 0.)  # positive x-direction
+#    drhoveg[:,:-1,1] = np.maximum((s['rhoveg'][:,1:]-s['rhoveg'][:,:-1]) / s['dsu'][:,:-1], 0.)  # negative x-direction
+#    drhoveg[1:,:,2] = np.maximum((s['rhoveg'][:-1,:]-s['rhoveg'][1:,:]) / s['dnu'][1:,:], 0.)  # positive y-direction
+#    drhoveg[:-1,:,3] = np.maximum((s['rhoveg'][1:,:]-s['rhoveg'][:-1,:]) / s['dnu'][:-1,:], 0.)  # negative y-direction
+#    
     # Growth of vegetation
-    s['drhoveg'][ix] = V_ver*(1-s['rhoveg'][ix]) + V_lat*np.sum(drhoveg[ix,:],1)
+    s['drhoveg'][ix]    = V_ver*(1-s['rhoveg'][ix]) 
+#    s['drhoveg']        += V_lat*np.sum(drhoveg[:,:,:],2)
     
     # Reduction of vegetation growth due to sediment burial
     
@@ -86,6 +126,13 @@ def grow (s, p):
     s['rhoveg'] = np.maximum(np.minimum(s['rhoveg'],1.),0.)
     
     s['germinate'] *= (s['rhoveg']!=0.)
+    s['lateral'] *= (s['rhoveg']!=0.)
+    
+    # Dying of vegetation
+    
+    s['rhoveg'] *= (s['zb']+0.1 >= s['zs'])
+    s['germinate'] *= (s['zb']+0.1 >=s ['zs'])
+    s['lateral'] *= (s['zb']+0.1 >=s ['zs'])
     
     return s
 
@@ -96,8 +143,8 @@ def vegshear(s, p):
     s['vegfac']= 1./(1. + roughness*s['rhoveg'])
     
     #filter
-    s = aeolis.wind.filter_low(s, p, 'vegfac', 'x', 2.)
-    s = aeolis.wind.filter_low(s, p, 'vegfac', 'y', 2.)
+#    s = aeolis.wind.filter_low(s, p, 'vegfac', 'x', 2.)
+#    s = aeolis.wind.filter_low(s, p, 'vegfac', 'y', 2.)
 #    
     ets = np.zeros(s['zb'].shape)
     etn = np.zeros(s['zb'].shape)

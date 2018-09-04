@@ -179,7 +179,10 @@ def compute_moisture(s, p):
     # should be .04 according to Pye and Tsoar
     # should be .64 according to Delgado-Fernandez (10% vol.)
     ix = mg > 0.064
-    s['uth'][ix] = np.inf
+    
+    ustar = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
+    
+    s['uth'][ix] = ustar[ix] #np.inf
     
     return s
 

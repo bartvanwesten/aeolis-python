@@ -49,8 +49,9 @@ def initialize(s, p):
     if isarray(p['wind_file']):
         if p['wind_convention'] == 'cartesian':
             pass
-        elif p['wind_convention'] == 'nautical':
+        elif p['wind_convention'] == 'nautical': #CHECK DIRECTIONS!
             p['wind_file'][:,2] = 270.0 - p['wind_file'][:,2]
+#            p['wind_file'][:,2] = - p['wind_file'][:,2]
         else:
             logger.log_and_raise('Unknown convention: %s' % p['wind_convention'], exc=ValueError)
 
@@ -61,7 +62,6 @@ def initialize(s, p):
                                             buffer_width=10.)
         
     return s
-
 
 def interpolate(s, p, t):
     '''Interpolate wind velocity and direction to current time step
@@ -130,22 +130,8 @@ def interpolate(s, p, t):
     s['taus'] = s['tau0']*s['ustars']/s['ustar']
     s['taun'] = s['tau0']*s['ustarn']/s['ustar']
     
-    #OLD
-    
-#    s['uw'] = get_velocity_at_height(s['uw'], p['z'], p['k'], p['h'])
-#    s['uws'] = get_velocity_at_height(s['uws'], p['z'], p['k'], p['h'])
-#    s['uwn'] = get_velocity_at_height(s['uwn'], p['z'], p['k'], p['h'])
-#
-#    # compute shear velocity
-#    s['ustar'] = get_velocity_at_height(s['uw'], p['h'], p['k'])
-#    s['ustars'] = get_velocity_at_height(s['uws'], p['h'], p['k'])
-#    s['ustarn'] = get_velocity_at_height(s['uwn'], p['h'], p['k'])
-#    
-##    s['tau'] = p['rhoa']*s['ustar']**2
-#    s['taus'] = p['rhoa']*s['ustars']**2
-#    s['taun'] = p['rhoa']*s['ustarn']**2
-#    
-#    s['tau'] = np.hypot(s['taus'],s['taun'])
+#    s['taus0'] = s['taus'].copy
+#    s['taun0'] = s['taun'].copy
     
     return s
     
@@ -160,39 +146,88 @@ def shear(s,p):
         
         # zshear
         
-        s['shear'].set_topo(s['zshear']) #zshear
+        s['shear'].set_topo(s['zb'])
+        s['shear'].set_shear(s['taus'], s['taun'])
+        
         s['shear'](u0=s['uw'][0,0],
                    udir=s['udir'][0,0])
         
-        s['dtaus'], s['dtaun'] = s['shear'].get_shear()
+        s['taus'], s['taun'] = s['shear'].get_shear()
         
-        for j in range(0,p['ny']):
-            avg = np.average(s['dtaus'][j,:2])
-            s['dtaus'][j,:] -= avg
+#        for j in range(0,p['ny']):
+#            avg = np.average(s['dtaus'][j,:2])
+#            s['dtaus'][j,:] -= avg
             
-        s['dtaus'] = np.maximum(s['dtaus'],-1.)
-        s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
+#        s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
         
         # set minimum of taus to zero
-        s['taus']=np.maximum(s['taus'],0.)
         s['tau'] = np.hypot(s['taus'], s['taun'])
         
+        ix = s['tau'] != 0.
+        
+        s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
+        s['ustars'][ix]  = s['ustar'][ix] *s['taus'][ix] /s['tau'][ix] 
+        s['ustarn'][ix]  = s['ustar'][ix] *s['taun'][ix] /s['tau'][ix] 
+        
+        s['zsep'] = s['shear'].get_separation()
+#        s['dzsep'] = np.maximum(s['zsep'] - s['zb'], 0.)
+        
         # set boundaries
-        s['tau'][:,0] = s['tau0'][:,0]
-        s['taus'][:,0] = s['tau0'][:,0]
-        s['taun'][:,0] = 0.
-        
-        # Method 1: According to Duran 2010 
-#        s['ustars'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taus']/s['tau']
-#        s['ustarn'] = s['ustar0']*np.sqrt(1.+s['dtaus'])*s['taun']/s['tau']
-#        s['ustar'] = np.hypot(s['ustars'], s['ustarn'])
-        
-        # Method 2
-        s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
-        s['ustars'] = s['ustar']*s['taus']/s['tau']
-        s['ustarn'] = s['ustar']*s['taun']/s['tau']
+#        s['tau'][:,0] = s['tau0'][:,0]
+#        s['taus'][:,0] = s['tau0'][:,0]
+#        s['taus'][:,-1] = s['tau0'][:,-1]
+#        s['taun'][:,0] = 0.
+#        s['taun'][:,-1] = 0.
+
+        # set boundaries (coast - inactive zone)
+#        s['taus'][:,:50] = s['tau0'][:,:50]
+#        s['tau'][:,:50] = s['tau0'][:,:50]
+#        s['taun'][:,:50] = 0.
 
     return s
+#
+#def separation(s,p):
+#
+#    #Calculate delta for relation separation bubble and shear stress
+#    
+#    x = s['x']
+#    dx = x[0,1]-x[0,0]
+#    nf = p['nfractions']
+##    
+#    # ACCORDING CDM
+##    m_tau_sepbub = .05
+##    slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
+##    delta = 1./(slope*m_tau_sepbub)
+##    
+##    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * s['dzsep'], 0.),1.)
+#    
+##    if p['process_separation']:
+##        
+##        s['tau'] *= s['zsepdelta']
+##    
+##        s['taus'] *= s['tau']*ets
+##        s['taun'] = s['tau']*etn
+#        
+#        # uu
+#        
+##        zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
+##        s['uu'] *= zsepdelta
+##        
+##        ets = np.zeros(s['uu'].shape)
+##        etn = np.zeros(s['uu'].shape)
+##            
+##        ix = s['uu'] != 0.
+##        ets[ix] = s['uus'][ix]/s['uu'][ix]
+##        etn[ix] = s['uun'][ix]/s['uu'][ix]
+##        
+##        s['uus'] = s['uu']*ets
+##        s['uun'] = s['uu']*etn
+#        
+#    s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
+#    s['ustars'] = s['ustar']*s['taus']/s['tau']
+#    s['ustarn'] = s['ustar']*s['taun']/s['tau']
+#    
+#    return s
 
 def get_velocity_at_height(u, z, z0, z1=None):
     '''Compute shear velocity from wind velocity following Prandl-Karman's Law of the Wall

@@ -237,29 +237,28 @@ class AeoLiS(IBmi):
         self.s = aeolis.wind.interpolate(self.s, self.p, self.t)
         
         # calculate separation bubble
-        self.s = aeolis.separation.separation(self.s, self.p)
+#        self.s = aeolis.separation.separation(self.s, self.p)
         
         # filter separation bubble in x- and y-direction
 #        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'x', 2.)
-        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 1.)
         
         # calculate shear stresses over the combined bedlevel and separation bubble
         self.s = aeolis.wind.shear(self.s, self.p)
+        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 2.)
+        # include effect of separation bubble on shear stresses
+#        self.s = aeolis.wind.separation(self.s, self.p)
         
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
         
         #compute vegetation shear
-#        self.s = aeolis.vegetation.vegshear(self.s, self.p)
+        self.s = aeolis.vegetation.vegshear(self.s, self.p)
         
         # compute shear velocity stress and grain speed
         self.s = aeolis.transport.grainspeed(self.s, self.p)
         
         # calculate saturation time
         self.s = aeolis.transport.saturation_time(self.s, self.p)
-        
-        # include effect of separation bubble on shear stresses
-        self.s = aeolis.separation.separation_shear(self.s, self.p)
         
         # determine optimal time step
         if not self.set_timestep(dt):
@@ -286,21 +285,21 @@ class AeoLiS(IBmi):
             logger.log_and_raise('Unknown scheme [%s]' % self.p['scheme'], exc=ValueError)
             
         # calculate changes
-        self.s = aeolis.bed.old(self.s, self.p)
+#        self.s = aeolis.bed.old(self.s, self.p)
 
         # update bed
         self.s = aeolis.bed.update(self.s, self.p)
 
         # avalanching
-        if self.p['_time']/self.p['dt'] % 1 == 0:
+        if self.p['_time']/self.p['dt'] % 100 == 0:
             self.s = aeolis.bed.avalanche(self.s, self.p)
         
         # calculate averages over time
         self.s = aeolis.bed.time(self.s, self.p)
         
         # grow vegetation
-#        self.s = aeolis.vegetation.germinate(self.s, self.p)
-#        self.s = aeolis.vegetation.grow(self.s, self.p)
+        self.s = aeolis.vegetation.germinate(self.s, self.p)
+        self.s = aeolis.vegetation.grow(self.s, self.p)
 
         # increment time
         self.t += self.dt * self.p['accfac']

@@ -57,36 +57,14 @@ def separation_shear(s,p):
     slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
     delta = 1./(slope*m_tau_sepbub)
     
-    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * (s['dzsep']), 0.),1.)
+    dzsep = np.maximum(s['zsep'] - s['zb'], 0.)
+    
+    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * dzsep, 0.),1.)
     
     if p['process_separation']:
         s['ustar'] *=s['zsepdelta']
         zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
-        s['uu'] *= zsepdelta
-        
-    # Filter out wiggle before separation bubble
-#        
-#    edge = np.zeros(s['zb'].shape)
-#    
-#    for j in range(0,ny):
-#        edge[j,3:-1] += np.logical_and(s['ustar'][j,4:]<0.5*s['ustar'][j,3:-1], s['ustar'][j,3:-1] == np.max(s['ustar'][j,:]))
-#
-#    s['ustar'][:,3:-1] *= (edge[:,3:-1] == 0)
-##    s['ustar'][:,2:-2] *= (edge[:,3:-1] == 0)
-#    
-#    s['ustar'][:,3:-1] += (edge[:,3:-1] == 1) * s['ustar'][:,3:-1]*0.9 #(s['ustar'][:,1:-3]+2*np.abs((s['ustar'][:,1:-3]-s['ustar'][:,:-4])))
-##    s['ustar'][:,2:-2] += (edge[:,3:-1] == 1) * s['ustar'][:,1:-3]*1.02 #(s['ustar'][:,1:-3]+1*np.abs((s['ustar'][:,1:-3]-s['ustar'][:,:-4])))
-#    
-##    s['temp'] = edge
-#    
-#    edge = np.repeat(edge[:,:,np.newaxis], nf, axis = 0)
-#    
-#    s['uu'][:,3:-1] *= (edge[:,3:-1] == 0)
-##    s['uu'][:,2:-2] *= (edge[:,3:-1] == 0)
-#    
-#    s['uu'][:,3:-1] += (edge[:,3:-1] == 1) * s['uu'][:,3:-1]*0.9 #(s['uu'][:,1:-3]+2*np.abs((s['uu'][:,1:-3]-s['uu'][:,:-4])))
-##    s['uu'][:,2:-2] += (edge[:,3:-1] == 1) * s['uu'][:,1:-3]*1.02 #(s['uu'][:,1:-3]+1*np.abs((s['uu'][:,1:-3]-s['uu'][:,:-4])))
-        
+        s['uu'] *= zsepdelta   
     
         # Calculte ustar and tau
         
@@ -127,7 +105,7 @@ def separation_shear(s,p):
 
 def separation(s, p):
     
-    if p['process_separation'] or 1 ==1 :
+    if p['process_separation'] :
         
         # Initialize grid and bed dimensions
          
@@ -140,10 +118,8 @@ def separation(s, p):
         # Initialize arrays
     
         dz  = np.zeros((ny, nx))
-#        ddz = np.zeros((ny, nx))
         stall = np.zeros((ny, nx))
         bubble = np.zeros((ny, nx)) 
-    #    zsepcrit = np.zeros((ny, nx))
         zfft = np.zeros((ny, nx), dtype=np.complex)
         k = np.array(range(0,nx))
         
@@ -153,7 +129,6 @@ def separation(s, p):
         dz[:,-1] = dz[:,-2]
         
         # Determine location of separation bubbles
-    #    if p['separationcrit'] == 'down':
         stall += np.logical_and(dz < 0, abs(dz) > p['M_sep'])
         stall[1:-1,:] += np.logical_and(stall[1:-1,:]==0, stall[:-2,:]>0, stall[2:,:]>0)
         stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0)  
@@ -171,8 +146,8 @@ def separation(s, p):
         s['stall']=stall
         s['bubble']=bubble
         
-        s['zsep'][:,:] = 0.
-        s['zsepnofil'][:,:] = 0.
+        s['zsep'][:,:] = np.min(s['zb'])
+        s['zsepnofil'][:,:] = np.min(s['zb'])
         
         zmin = np.zeros(ny)
         
@@ -191,11 +166,11 @@ def separation(s, p):
                     xb = x[j,i]
                     hb = h[j,i]
                     
-                    dhdx0 = (z[j,i]-z[j,i-2])/(2*dx)
+                    dhdx0 = (z[j,i]-z[j,i-1])/(1*dx)
                     
                     # Separation bubble for shear stresses
                     
-                    s['zsepshear'][j,:] = 0.
+                    s['zsepshear'][j,:] = zmin[j]
                     h, k_max = poly(s, p, i, j, hb, xb, dx, nx, dhdx0, x, h, 11.)
                     s['zsepshear'][j,:] += (h[j,:]+zmin[j])
                     
@@ -234,34 +209,6 @@ def poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h, slope):
     a2 = -3*hb/l**2 - 2*dhdx/l
     
     k_max = min(i+int(l/dx),int(nx))
-    
     xs = x[j,i:k_max] - xb
     
-#    if l==2.0:
-#        s['zsep'][j,i:k_max]=0.
-#    else:
     h[j,i:k_max] = ((a3*xs + a2) * xs + dhdx)*xs + hb
-    
-#    h[j,i:k_max] = s['zsep'][j,i:k_max]
-        
-    return h, k_max
-
-def poly2(s, p, i, j, hb, xb, dx, nx, dhdx, x, h, slope):
-    
-    slope = np.deg2rad(slope)
-    
-    a = dhdx / slope
-    
-    l = np.maximum((1.5 * hb / slope) * (1 + a*0.25 + 0.125*a**2),.1)
-    a3 = 2*hb/l**3 + dhdx/l**2
-    a2 = -3*hb/l**2 - 2*dhdx/l
-    
-    k_max = min(i+int(l/dx),int(nx))
-    
-    xs = x[j,i:k_max] - xb
-    
-    s['zsepshear'][j,i:k_max] = ((a3*xs + a2) * xs + dhdx)*xs + hb
-    
-    h[j,i:k_max] = s['zsepshear'][j,i:k_max]
-        
-    return h

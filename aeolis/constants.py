@@ -63,6 +63,7 @@ MODEL_STATE = {
         'alfav',                            # [rad] Real-world grid cell orientation around v
         'zb',                               # [m] Bed level above reference
         'zbold',                            # [NEW!]
+        'zb0',                              # [NEW!]
         'S',                                # [-] Level of saturation
         'xu',                               # [m] 
         'yu',                               # [m] 
@@ -100,15 +101,19 @@ MODEL_STATE = {
         'zf',                               # NEW! Fixer layer according to Pieter
         'drhoveg',                          # NEW!
         'rhoveg',                           # NEW!
+        'dxrhoveg',                         # NEW!
         'dhveg',
         'hveg',
         'Hveg',
         'germinate',                        # NEW!
+        'lateral',
         'dzdt',                             # NEW!
         'vegfac',                           # NEW!
         'tauTs',
         'zsep0',
         'tau0',
+        'taus0',
+        'taun0',
         'tau0zb',
         'zsepshear',
         'ustar',
@@ -232,7 +237,7 @@ DEFAULT_CONFIG = {
     'nfractions'          : 1,                  # [-] Number of sediment fractions
     'nlayers'             : 3,                  # [-] Number of bed layers
     'nsavetimes'          : 20,                 # [-] NEW! For smoother results
-    'dz_interval'         : 1209600.,           # [s] NEW! For vegetation
+    'dz_interval'         : 86400.,             # [s] NEW! For vegetation
     'layer_thickness'     : .01,                # [m] Thickness of bed layers
     'g'                   : 9.81,               # [m/s^2] Gravitational constant
     'rhoa'                : 1.25,               # [kg/m^3] Air density
@@ -282,7 +287,7 @@ DEFAULT_CONFIG = {
     'eroveg'              : 1.,                 # NEW! default: 1
     'Hveg'                : 1.,
     'V_ver'               : 2.,                 # NEW! [1/year]
-    'V_lat'               : 0.,                 # NEW! [m/year]
+    'V_lat'               : 1.,                 # NEW! [m/year]
     'dz_opt'              : 0.0,                # NEW! [m/year]
     'dz_tol'              : 0.05                 # NEW! [m/year]
 }

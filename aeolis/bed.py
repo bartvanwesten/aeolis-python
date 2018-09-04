@@ -64,6 +64,7 @@ def initialize(s, p):
 
     # initialize bathymetry
     s['zb'][:,:] = p['bed_file']
+    s['zb0'][:,:] = p['bed_file']
     s['zbold'][:,:] = s['zb'][:,:].copy()
 
     # initialize bed layers
@@ -96,7 +97,7 @@ def initialize(s, p):
 
 def old(s, p):
     
-    s['zbold'] = s['zb'].copy()
+#    s['zbold'] = s['zb'].copy()
     
     return s
 
@@ -109,16 +110,19 @@ def time(s , p ):
 #
 #    # Calculate average
 #    s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
+
             
     if p['_time'] % p['dz_interval'] == 0.:
                 
         s['dz_avg'] = (s['zb'] - s['zbold'])/p['dz_interval']
         
         s['zbold'] = s['zb'].copy()
-        
         s['dzyear'] = s['dz_avg'] * 3600. * 24. * 365.25
     
     return s
+
+#def hydro_supply(s, p):
+    
 
 def update(s, p):
     '''Update bathymetry and bed composition
@@ -200,9 +204,30 @@ def update(s, p):
 
     # update bathy
     if p['process_bedupdate']:
+        
         dz = dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
+        
+        # redistribute sediment from inactive zone to marine interaction zone
+
+        border_low = np.min(s['zs']) - 1.
+        border_high = np.min(s['zs']) + 0.1 # Interaction border, see paper, redefine
+    
+        ix = np.logical_and(s['zb'] > border_low, s['zb'] < border_high)
+#        volume = np.sum(dz[:,-10:], axis = 1)
+#        length_zone = np.sum(ix, axis = 1)
+        
+#        supply = volume / length_zone
+#        supply_grid = np.repeat(supply[:,np.newaxis], nx+1, axis = 1)
+        
+#        dz[ix] = 0. #+= supply_grid[ix]
+        
+#        dz[:,-10:] = 0.
+        
         s['zb'] += dz
         s['zs'] += dz
+        
+        s['zb'][ix] += (s['zb0'][ix] - s['zb'][ix])*0.01
+
 
     return s
 
