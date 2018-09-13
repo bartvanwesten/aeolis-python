@@ -53,7 +53,7 @@ def germinate (s,p):
     
     # Germination
     
-    p_germinate_month = 0.005 # / month
+    p_germinate_month = p['germinate'] # 0.005 / month 
     p_germinate_dt = 1-(1-p_germinate_month)**(1/n)
     germination = np.random.random((s['germinate'].shape))
     
@@ -61,17 +61,15 @@ def germinate (s,p):
     
     s['germinate'][:10,:] = 0.
     s['germinate'][-10:,:] = 0.
+    s['germinate'][:,:10] = 0.
     s['germinate'][:,-10:] = 0.
     
     s['germinate'] = np.minimum(s['germinate'],1.)
     
     # Lateral expension
     
-    p_lateral_month = .99 # / year
+    p_lateral_month = 0.5 #0.99  / month
     p_lateral_dt = 1-(1-p_lateral_month)**(1/n)
-    
-#    print(p_lateral_dt)
-#    print(p_lateral_month/n)
     
     drhoveg = np.zeros((p['ny']+1, p['nx']+1, 4))
     
@@ -82,12 +80,27 @@ def germinate (s,p):
 
     s['dxrhoveg'] = (np.sum(drhoveg[:,:,:],2)>0.)
     
-    p_lateral = p_lateral_dt * s['dxrhoveg']
+    #Determine slopes
+    
+    slope = np.zeros((p['ny']+1, p['nx']+1, 4))
+    
+    slope[:,1:,0] = np.abs((s['zb'][:,:-1]-s['zb'][:,1:]) / s['dsu'][:,1:])  # positive x-direction
+    slope[:,:-1,1] = np.abs((s['zb'][:,1:]-s['zb'][:,:-1]) / s['dsu'][:,:-1])  # negative x-direction
+    slope[1:,:,2] = np.abs((s['zb'][:-1,:]-s['zb'][1:,:]) / s['dnu'][1:,:])  # positive y-direction
+    slope[:-1,:,3] = np.abs((s['zb'][1:,:]-s['zb'][:-1,:]) / s['dnu'][:-1,:])  # negative y-direction
+    
+    limit_slope = 15. # 15
+    limit_slope_ratio = np.arctan(np.deg2rad(limit_slope))
+    
+    slope_total = np.sum(slope[:,:,:],2)
+    
+    p_lateral = p_lateral_dt * s['dxrhoveg'] * (slope_total <= limit_slope_ratio)
     s['lateral'] += (germination <= p_lateral)
     s['lateral'] = np.minimum(s['lateral'],1.)
     
     s['lateral'][:10,:] = 0.
     s['lateral'][-10:,:] = 0.
+    s['lateral'][:,:10] = 0.
     s['lateral'][:,-10:] = 0.
 
     return s
@@ -109,18 +122,26 @@ def grow (s, p):
 #    drhoveg[:,:-1,1] = np.maximum((s['rhoveg'][:,1:]-s['rhoveg'][:,:-1]) / s['dsu'][:,:-1], 0.)  # negative x-direction
 #    drhoveg[1:,:,2] = np.maximum((s['rhoveg'][:-1,:]-s['rhoveg'][1:,:]) / s['dnu'][1:,:], 0.)  # positive y-direction
 #    drhoveg[:-1,:,3] = np.maximum((s['rhoveg'][1:,:]-s['rhoveg'][:-1,:]) / s['dnu'][:-1,:], 0.)  # negative y-direction
-#    
-    # Growth of vegetation
-    s['drhoveg'][ix]    = V_ver*(1-s['rhoveg'][ix]) 
-#    s['drhoveg']        += V_lat*np.sum(drhoveg[:,:,:],2)
-    
+
     # Reduction of vegetation growth due to sediment burial
-    
+    short_factor = 0.8
     dz_opt  = p['dz_opt']   #[m/year]
     dz_tol  = p['dz_tol']   #[m/year]
-    dz      = s['dzyear']   #[m/year]
+    dz      = s['dzyear_avg']*short_factor   #[m/year]
     
-    s['drhoveg'] *= (1-((dz-dz_opt)/dz_tol)**2)
+    s['sedfac']=np.maximum((1-((dz-dz_opt)/dz_tol)**2),-2.)
+    
+    # Growth of vegetation
+    s['drhoveg'][ix]    = V_ver*s['sedfac'][ix]
+    
+    # Growth towards limit (upper and lower)
+    
+    ix = s['drhoveg'] > 0.
+    s['drhoveg'][ix] *= (1-s['rhoveg'][ix]) 
+    ix = s['drhoveg'] < 0.
+    s['drhoveg'][ix] *= s['rhoveg'][ix]
+    
+#    s['drhoveg']        += V_lat*np.sum(drhoveg[:,:,:],2)
     
     s['rhoveg'] += s['drhoveg']*p['dt']
     s['rhoveg'] = np.maximum(np.minimum(s['rhoveg'],1.),0.)

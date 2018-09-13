@@ -98,6 +98,7 @@ def interpolate(s, p, t):
         s['uw'][:,:] = interp_circular(t, uw_t, uw_s)
         s['udir'][:,:] = np.arctan2(np.interp(t, uw_t, np.sin(uw_d)),
                                     np.interp(t, uw_t, np.cos(uw_d))) * 180. / np.pi
+        print(s['udir'][1,1])
 
     s['uws'] = s['uw'] * np.cos(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
     s['uwn'] = s['uw'] * np.sin(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
@@ -130,8 +131,8 @@ def interpolate(s, p, t):
     s['taus'] = s['tau0']*s['ustars']/s['ustar']
     s['taun'] = s['tau0']*s['ustarn']/s['ustar']
     
-#    s['taus0'] = s['taus'].copy
-#    s['taun0'] = s['taun'].copy
+    s['taus0'] = s['taus'].copy()
+    s['taun0'] = s['taun'].copy()
     
     return s
     
@@ -157,8 +158,17 @@ def shear(s,p):
 #        for j in range(0,p['ny']):
 #            avg = np.average(s['dtaus'][j,:2])
 #            s['dtaus'][j,:] -= avg
-            
-#        s['taus'], s['taun'] = s['shear'].add_shear(s['taus'], s['taun'])
+        
+        # set boundaries
+        s['taus'][:,0] = s['taus0'][:,0]
+        s['taus'][:,-1] = s['taus0'][:,-1]
+        s['taus'][0,:] = s['taus0'][0,:]
+        s['taus'][-1,:] = s['taus0'][-1,:]
+        
+        s['taun'][:,0] = s['taun0'][:,0]
+        s['taun'][:,-1] = s['taun0'][:,-1]
+        s['taun'][0,:] = s['taun0'][0,:]
+        s['taun'][-1,:] = s['taun0'][-1,:]
         
         # set minimum of taus to zero
         s['tau'] = np.hypot(s['taus'], s['taun'])
@@ -171,13 +181,6 @@ def shear(s,p):
         
         s['zsep'] = s['shear'].get_separation()
 #        s['dzsep'] = np.maximum(s['zsep'] - s['zb'], 0.)
-        
-        # set boundaries
-#        s['tau'][:,0] = s['tau0'][:,0]
-#        s['taus'][:,0] = s['tau0'][:,0]
-#        s['taus'][:,-1] = s['tau0'][:,-1]
-#        s['taun'][:,0] = 0.
-#        s['taun'][:,-1] = 0.
 
         # set boundaries (coast - inactive zone)
 #        s['taus'][:,:50] = s['tau0'][:,:50]

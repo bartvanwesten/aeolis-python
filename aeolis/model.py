@@ -236,17 +236,9 @@ class AeoLiS(IBmi):
         # interpolate wind time series
         self.s = aeolis.wind.interpolate(self.s, self.p, self.t)
         
-        # calculate separation bubble
-#        self.s = aeolis.separation.separation(self.s, self.p)
-        
-        # filter separation bubble in x- and y-direction
-#        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'x', 2.)
-        
         # calculate shear stresses over the combined bedlevel and separation bubble
         self.s = aeolis.wind.shear(self.s, self.p)
         self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 2.)
-        # include effect of separation bubble on shear stresses
-#        self.s = aeolis.wind.separation(self.s, self.p)
         
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
@@ -291,7 +283,7 @@ class AeoLiS(IBmi):
         self.s = aeolis.bed.update(self.s, self.p)
 
         # avalanching
-        if self.p['_time']/self.p['dt'] % 100 == 0:
+        if self.p['_time']/self.p['dt'] % 1 == 0:
             self.s = aeolis.bed.avalanche(self.s, self.p)
         
         # calculate averages over time
@@ -1076,30 +1068,30 @@ class AeoLiS(IBmi):
 #        s['ugs'] = np.sum(w * ugs,axis=-1) #slechts 1 transportsnelheid voor alle fracties
 #        s['ugn'] = np.sum(w * ugn,axis=-1)
 
-#        #define velocity fluxes
-#        ufs = np.zeros((p['ny']+1,p['nx']+2))
-#        ufs[:,1:-1] = 0.5*s['ugs'][:,:-1] + 0.5*s['ugs'][:,1:]
-#        ufn = np.zeros((p['ny']+2,p['nx']+1))
-#        ufn[1:-1,:] = 0.5*s['ugn'][:-1,:] + 0.5*s['ugn'][1:,:]
-#        #boundary values
-#        ufs[:,0]  = s['ugs'][:,0]
-#        ufs[:,-1] = s['ugs'][:,-1]
-#        if p['boundary_lateral'] == 'circular':
-#            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
-#            ufn[-1,:] = ufn[0,:]
-#        else:
-#            ufn[0,:]  = s['ugn'][0,:]
-#            ufn[-1,:] = s['ugn'][-1,:]
+        #define velocity fluxes
+        ufs = np.zeros((p['ny']+1,p['nx']+2))
+        ufs[:,1:-1] = 0.5*s['ugs'][:,:-1] + 0.5*s['ugs'][:,1:]
+        ufn = np.zeros((p['ny']+2,p['nx']+1))
+        ufn[1:-1,:] = 0.5*s['ugn'][:-1,:] + 0.5*s['ugn'][1:,:]
+        #boundary values
+        ufs[:,0]  = s['ugs'][:,0]
+        ufs[:,-1] = s['ugs'][:,-1]
+        if p['boundary_lateral'] == 'circular':
+            ufn[0,:] = 0.5*s['ugn'][0,:] + 0.5*s['ugn'][-1,:]
+            ufn[-1,:] = ufn[0,:]
+        else:
+            ufn[0,:]  = s['ugn'][0,:]
+            ufn[-1,:] = s['ugn'][-1,:]
 #            
 #        ufs = np.zeros((p['ny']+1,p['nx']+2))
 #        ufs[1:-1,2:-1] = 0.25*s['uus'][2:,2:,0] + 0.25*s['uus'][2:,:-2,0] + 0.25*s['uus'][:-2,:-2,0] + 0.25*s['uus'][:-2,2:,0]
 #        ufn = np.zeros((p['ny']+2,p['nx']+1))
 #        ufn[2:-1,1:-1] = 0.25*s['uun'][2:,2:,0] + 0.25*s['uun'][2:,:-2,0] + 0.25*s['uun'][:-2,:-2,0] + 0.25*s['uun'][:-2,2:,0]
 #        
-        ufs = np.zeros((p['ny']+1,p['nx']+2))
-        ufs[1:-1,2:-1] = s['uus'][1:-1,1:-1,0]
-        ufn = np.zeros((p['ny']+2,p['nx']+1))
-        ufn[2:-1,1:-1] = 0.5*s['uun'][2:,1:-1,0] + 0.5*s['uun'][:-2,1:-1,0]
+#        ufs = np.zeros((p['ny']+1,p['nx']+2))
+#        ufs[1:-1,2:-1] = s['uus'][1:-1,1:-1,0]
+#        ufn = np.zeros((p['ny']+2,p['nx']+1))
+#        ufn[2:-1,1:-1] = 0.5*s['uun'][2:,1:-1,0] + 0.5*s['uun'][:-2,1:-1,0]
         
         beta = abs(beta)
         if beta >= 1.:

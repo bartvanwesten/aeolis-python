@@ -352,22 +352,22 @@ def non_erodible(s, p): #NEW!
     s['zne'][:,:] = p['ne_file']
     
     # Hard method
-#    
-#    ix = s['zb']<=s['zne']
-#    s['uth'][ix] = np.inf
+    
+    ix = s['zb']<=s['zne']
+    s['uth'][ix] = np.inf
     
     # Smooth method
     
-    alfa = .05
-    
-    nf = p['nfractions']
-    thlyr = s['thlyr'][:,:,0]
-    thuthlyr = alfa * thlyr
-    ix = s['zb']<=s['zne']+thuthlyr
-    
-    for i in range(nf):
-        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr[ix])*(s['ustar'][ix]*1.0-s['uth'][ix,i]),s['uth'][ix,i])
-    
+#    alfa = .05
+#    
+#    nf = p['nfractions']
+#    thlyr = s['thlyr'][:,:,0]
+#    thuthlyr = alfa * thlyr
+#    ix = s['zb']<=s['zne']+thuthlyr
+#    
+#    for i in range(nf):
+#        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr[ix])*(s['ustar'][ix]*1.0-s['uth'][ix,i]),s['uth'][ix,i])
+#    
     return s
 
 

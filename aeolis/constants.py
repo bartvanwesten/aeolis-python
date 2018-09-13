@@ -95,6 +95,7 @@ MODEL_STATE = {
         'dz',                               # TEMP!
         'dz_avg',
         'dzyear',                           # NEW!
+        'dzyear_avg',
         'zb_avg',
         'zshear',
         'zshearzb',
@@ -109,6 +110,7 @@ MODEL_STATE = {
         'lateral',
         'dzdt',                             # NEW!
         'vegfac',                           # NEW!
+        'sedfac',
         'tauTs',
         'zsep0',
         'tau0',
@@ -169,13 +171,12 @@ MODEL_STATE = {
     ),
     ('ny','nx','nlayers','nfractions') : (
         'mass',                             # [kg/m^2] Sediment mass in bed
-#    ),
-#    ('ny','nx','nsavetimes') : (
-#        'zb_time',                           # NEW!
-#        'dz_time',                           # NEW!
-#    ),
-#    ('ny','nx','nfractions','nsavetimes') : (
-#        'Ct_time',                           # NEW!
+    ),
+    ('ny','nx','nsavetimes') : (
+        'dzyear_time',                           # NEW!
+    ),
+    ('ny','nx','nfractions','nsavetimes') : (
+        'Ct_time',                           # NEW!
     )            
 }
 
@@ -288,6 +289,7 @@ DEFAULT_CONFIG = {
     'Hveg'                : 1.,
     'V_ver'               : 2.,                 # NEW! [1/year]
     'V_lat'               : 1.,                 # NEW! [m/year]
+    'germinate'           : 0.005,              # -/year
     'dz_opt'              : 0.0,                # NEW! [m/year]
     'dz_tol'              : 0.05                 # NEW! [m/year]
 }

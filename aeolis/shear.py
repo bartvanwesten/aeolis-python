@@ -171,6 +171,8 @@ class WindShear:
         
         gc['dtaux'] = np.maximum(gc['dtaux'],-1.)
         
+        gc['taux'], gc['tauy'] = self.rotate(gc['taux'], gc['tauy'], udir)
+        
         # Add shear
         self.add_shear() 
         
@@ -178,11 +180,11 @@ class WindShear:
         self.separation_shear(dzsep)
         
         # Rotation
-        
-        gc['taux'], gc['tauy'] = self.rotate(gc['taux'], gc['tauy'], -udir)
-        
+
         gc['x'], gc['y'] = self.rotate(gc['x'], gc['y'], udir, origin=(self.x0, self.y0))
         gi['x'], gi['y'] = self.rotate(gi['x'], gi['y'], udir, origin=(self.x0, self.y0))
+        
+        gc['taux'], gc['tauy'] = self.rotate(gc['taux'], gc['tauy'], -udir)
 
         # Interpolate real grid with shear stresses
         self.igrid['taux'] = self.interpolate(gc['x'], gc['y'], gc['taux'],
@@ -370,38 +372,6 @@ class WindShear:
         self.cgrid['tauy'] = tauyc
         self.cgrid['x'] = xc
         self.cgrid['y'] = yc
-        
-#        bx = self.get_borders(gi['x'])
-#        by = self.get_borders(gi['y'])
-#        bz = self.get_borders(gi['z'])
-#
-#        ix = zc == 0. #np.isnan(zc)
-#        if np.any(ix):
-#            
-#            d = np.zeros((np.sum(ix),))
-#            z = np.zeros((np.sum(ix),))
-#            
-#            for i, (xn, yn) in enumerate(zip(xc[ix], yc[ix])):
-#                
-#                distances = np.hypot(bx - xn, by - yn)
-#                idx = np.argmin(distances)
-#                d[i] = np.min(distances)
-#                z[i] = bz[idx]
-#                
-#                for j in range(2):
-#                    i1 = idx+j-1
-#                    i2 = idx+j
-#                    
-#                    k = self.interpolate_projected_point((bx[i1], by[i1], bz[i1]),
-#                                                         (bx[i2], by[i2], bz[i2]),
-#                                                         (xn, yn))
-#                    
-#                    if k:
-#                        d[i] = k[0]
-#                        z[i] = k[1]
-#                        break
-#                    
-#            self.cgrid['z'][ix] = z * self.get_sigmoid(d)
         
     def compute_shear(self, u0, nfilter=(1,2)):
         '''Compute wind shear perturbation for given free-flow wind speed on computational grid
@@ -757,14 +727,14 @@ class WindShear:
 
         # Walk through all separation bubbles and determine polynoms
         
-        dzdx0[:,2:][bubble] = (z[:,2:]-z[:,:-2])/(2*g['dx'])
-        dzdx0[:,-2:] = 0.
+        dzdx0[:,1:][bubble] = (z[:,1:]-z[:,:-1])/(1*g['dx'])
+        dzdx0[:,-1:] = 0.
         
         a = dzdx0 / slope
         l = np.minimum(np.maximum((1.5 * z / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
         
-        a2 = -3*z/l**2 - 2*dzdx0/l
-        a3 = 2*z/l**3 + dzdx0/l**2
+        a2 = -3 * z/(l**2) - 2 * dzdx0 / (l)
+        a3 =  2 * z/(l**3) +     dzdx0 / (l**2)
         
         # Count separation bubbles
         
@@ -778,8 +748,9 @@ class WindShear:
           
             i_max = min(i+int(l[j,i]/g['dx']),int(nx-1))
             xs = x[j,i:i_max] - x[j,i]
-            zsep0[j,i:i_max] = ((a3[j,i]*xs + a2[j,i]) * xs + dzdx0[j,i])*xs + z[j,i]
-        
+            
+            zsep0[j,i:i_max] = ((a3[j,i] * xs + a2[j,i]) * xs + dzdx0[j,i]) * xs + z[j,i]
+            
             # Separation bubble cuts dune profile
             
             cut_list = np.logical_and(zsep0[j, i:i_max] >= z[j,i:i_max], zsep0[j, i+1:i_max+1] < z[j,i:i_max])  

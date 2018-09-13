@@ -103,21 +103,29 @@ def old(s, p):
 
 def time(s , p ):
     
-#    # Collect time steps
-#
-#    s['Ct_time'][:,:,:,:-1] = s['Ct_time'][:,:,:,1:].copy()
-#    s['Ct_time'][:,:,:,-1] = s['Ct'].copy()
-#
-#    # Calculate average
-#    s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
+    # Collect time steps
+
+    s['Ct_time'][:,:,:,:-1] = s['Ct_time'][:,:,:,1:].copy()
+    s['Ct_time'][:,:,:,-1] = s['Ct'].copy()
+
+    # Calculate average
+    s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
+    
+    # Collect time steps
+
+    s['dzyear_time'][:,:,:-1] = s['dzyear_time'][:,:,1:].copy()
+    s['dzyear_time'][:,:,-1] = s['dzyear'].copy()
+
+    # Calculate average
+    s['dzyear_avg'] = s['dzyear_time'].sum(2) / p['nsavetimes']
 
             
-    if p['_time'] % p['dz_interval'] == 0.:
-                
-        s['dz_avg'] = (s['zb'] - s['zbold'])/p['dz_interval']
-        
-        s['zbold'] = s['zb'].copy()
-        s['dzyear'] = s['dz_avg'] * 3600. * 24. * 365.25
+#    if p['_time'] % p['dz_interval'] == 0.:
+#                
+#        s['dz_avg'] = (s['zb'] - s['zbold'])/p['dz_interval']
+#        
+#        s['zbold'] = s['zb'].copy()
+#        s['dzyear'] = s['dz_avg'] * 3600. * 24. * 365.25
     
     return s
 
@@ -209,10 +217,9 @@ def update(s, p):
         
         # redistribute sediment from inactive zone to marine interaction zone
 
-        border_low = np.min(s['zs']) - 1.
-        border_high = np.min(s['zs']) + 0.1 # Interaction border, see paper, redefine
-    
-        ix = np.logical_and(s['zb'] > border_low, s['zb'] < border_high)
+#        border_low = np.min(s['zs']) - 1.
+#        border_high = np.min(s['zs']) + 0.1 # Interaction border, see paper, redefine
+        
 #        volume = np.sum(dz[:,-10:], axis = 1)
 #        length_zone = np.sum(ix, axis = 1)
         
@@ -223,9 +230,12 @@ def update(s, p):
         
 #        dz[:,-10:] = 0.
         
+        s['dzyear'] = dz * (3600. * 24. * 365.25) / p['dt']
+        
         s['zb'] += dz
         s['zs'] += dz
         
+        ix = s['zs'] > ( s['zb'] + 0.01 )
         s['zb'][ix] += (s['zb0'][ix] - s['zb'][ix])*0.01
 
 
