@@ -57,7 +57,7 @@ def initialize(s, p):
 
     # initialize wind shear model
     if p['process_shear']:
-        s['shear'] = aeolis.shear.WindShear(s['x'], s['y'], s['zb'],
+        s['shear'] = aeolis.shear.WindShear(s['x'], s['y'], s['zb'], dx = p['dcomp'], dy = p['dcomp'],
                                             L=100., l=10., z0=0.001,
                                             buffer_width=10.)
         
@@ -96,9 +96,10 @@ def interpolate(s, p, t):
         uw_d = p['wind_file'][:,2] / 180. * np.pi
 
         s['uw'][:,:] = interp_circular(t, uw_t, uw_s)
-        s['udir'][:,:] = np.arctan2(np.interp(t, uw_t, np.sin(uw_d)),
-                                    np.interp(t, uw_t, np.cos(uw_d))) * 180. / np.pi
-        print(s['udir'][1,1])
+#        s['udir'][:,:] = np.arctan2(np.interp(t, uw_t, np.sin(uw_d)),
+#                                    np.interp(t, uw_t, np.cos(uw_d))) * 180. / np.pi
+        s['udir'][:,:] = np.arctan2(interp_circular(t, uw_t, np.sin(uw_d)),
+                                    interp_circular(t, uw_t, np.cos(uw_d))) * 180. / np.pi
 
     s['uws'] = s['uw'] * np.cos(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
     s['uwn'] = s['uw'] * np.sin(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
@@ -128,8 +129,9 @@ def interpolate(s, p, t):
     s['tau'] = p['rhoa']*s['ustar']**2
     s['tau0'] = s['tau']
     
-    s['taus'] = s['tau0']*s['ustars']/s['ustar']
-    s['taun'] = s['tau0']*s['ustarn']/s['ustar']
+    ix = s['ustar'] != 0.
+    s['taus'][ix] = s['tau0'][ix]*s['ustars'][ix]/s['ustar'][ix]
+    s['taun'][ix] = s['tau0'][ix]*s['ustarn'][ix]/s['ustar'][ix]
     
     s['taus0'] = s['taus'].copy()
     s['taun0'] = s['taun'].copy()
@@ -140,35 +142,26 @@ def shear(s,p):
     
     if 'shear' in s.keys() and p['process_shear']:
         
-        s['zshear'] = s['zb'].copy()
-        
-        ix = s['zsep'] > s['zb']
-        s['zshear'][ix] = s['zsep'][ix]
-        
-        # zshear
-        
         s['shear'].set_topo(s['zb'])
         s['shear'].set_shear(s['taus'], s['taun'])
         
         s['shear'](u0=s['uw'][0,0],
-                   udir=s['udir'][0,0])
+                   udir=s['udir'][0,0],
+                   process_separation = p['process_separation'])
         
         s['taus'], s['taun'] = s['shear'].get_shear()
         
-#        for j in range(0,p['ny']):
-#            avg = np.average(s['dtaus'][j,:2])
-#            s['dtaus'][j,:] -= avg
-        
         # set boundaries
-        s['taus'][:,0] = s['taus0'][:,0]
-        s['taus'][:,-1] = s['taus0'][:,-1]
-        s['taus'][0,:] = s['taus0'][0,:]
-        s['taus'][-1,:] = s['taus0'][-1,:]
+        n = 1
+        s['taus'][:,:n] = s['taus0'][:,:n]
+        s['taus'][:,-n:] = s['taus0'][:,-n:]
+        s['taus'][:n,:] = s['taus0'][:n,:]
+        s['taus'][-n:,:] = s['taus0'][-n:,:]
         
-        s['taun'][:,0] = s['taun0'][:,0]
-        s['taun'][:,-1] = s['taun0'][:,-1]
-        s['taun'][0,:] = s['taun0'][0,:]
-        s['taun'][-1,:] = s['taun0'][-1,:]
+        s['taun'][:,:n] = s['taun0'][:,:n]
+        s['taun'][:,-n:] = s['taun0'][:,-n:]
+        s['taun'][:n,:] = s['taun0'][:n,:]
+        s['taun'][-n:,:] = s['taun0'][-n:,:]
         
         # set minimum of taus to zero
         s['tau'] = np.hypot(s['taus'], s['taun'])
@@ -179,58 +172,32 @@ def shear(s,p):
         s['ustars'][ix]  = s['ustar'][ix] *s['taus'][ix] /s['tau'][ix] 
         s['ustarn'][ix]  = s['ustar'][ix] *s['taun'][ix] /s['tau'][ix] 
         
-        s['zsep'] = s['shear'].get_separation()
-#        s['dzsep'] = np.maximum(s['zsep'] - s['zb'], 0.)
-
-        # set boundaries (coast - inactive zone)
-#        s['taus'][:,:50] = s['tau0'][:,:50]
-#        s['tau'][:,:50] = s['tau0'][:,:50]
-#        s['taun'][:,:50] = 0.
+        if p['process_separation']:
+            s['zsep'] = s['shear'].get_separation()
+            s['dzsep'] = np.maximum(s['zsep'] - s['zb'], 0.)
 
     return s
-#
-#def separation(s,p):
-#
-#    #Calculate delta for relation separation bubble and shear stress
-#    
-#    x = s['x']
-#    dx = x[0,1]-x[0,0]
-#    nf = p['nfractions']
-##    
-#    # ACCORDING CDM
-##    m_tau_sepbub = .05
-##    slope = np.tan(np.deg2rad(p['Mcr_dyn']))*dx
-##    delta = 1./(slope*m_tau_sepbub)
-##    
-##    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * s['dzsep'], 0.),1.)
-#    
-##    if p['process_separation']:
-##        
-##        s['tau'] *= s['zsepdelta']
-##    
-##        s['taus'] *= s['tau']*ets
-##        s['taun'] = s['tau']*etn
-#        
-#        # uu
-#        
-##        zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
-##        s['uu'] *= zsepdelta
-##        
-##        ets = np.zeros(s['uu'].shape)
-##        etn = np.zeros(s['uu'].shape)
-##            
-##        ix = s['uu'] != 0.
-##        ets[ix] = s['uus'][ix]/s['uu'][ix]
-##        etn[ix] = s['uun'][ix]/s['uu'][ix]
-##        
-##        s['uus'] = s['uu']*ets
-##        s['uun'] = s['uu']*etn
-#        
-#    s['ustar'] = np.sqrt(s['tau']/p['rhoa'])
-#    s['ustars'] = s['ustar']*s['taus']/s['tau']
-#    s['ustarn'] = s['ustar']*s['taun']/s['tau']
-#    
-#    return s
+
+def separation(s,p):
+
+    m_tau_sepbub = .05
+    slope = np.tan(np.deg2rad(34.)) #Mcr_dyn
+    delta = 1./(slope*m_tau_sepbub)
+
+    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * s['dzsep'], 0.),1.)
+    
+    s['taus'] *= s['zsepdelta']
+    s['taun'] *= s['zsepdelta']
+    
+    s['tau'] = np.hypot(s['taus'], s['taun'])
+    
+    ix = s['tau'] != 0.
+        
+    s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
+    s['ustars'][ix]  = s['ustar'][ix] *s['taus'][ix] /s['tau'][ix] 
+    s['ustarn'][ix]  = s['ustar'][ix] *s['taun'][ix] /s['tau'][ix] 
+    
+    return s
 
 def get_velocity_at_height(u, z, z0, z1=None):
     '''Compute shear velocity from wind velocity following Prandl-Karman's Law of the Wall
@@ -272,7 +239,7 @@ def filter_low(s, p, par, direction, Cut):
     parfft *= fac
     s[par] = np.real(np.fft.ifft2(parfft))
     
-    if par == 'tau' or par == 'taunosep' or par == 'dzsep':
+    if par == 'tau' or par == 'taunosep' or par == 'dzsep' or par == 'Ts':
         
         zerostate   = np.zeros((ny, nx))
         avg         = np.zeros((ny, nx))

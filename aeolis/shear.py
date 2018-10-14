@@ -80,7 +80,7 @@ class WindShear:
     istransect = False
     
     
-    def __init__(self, x, y, z, dx=1., dy=1.,
+    def __init__(self, x, y, z, dx=.5, dy=.5,
                  buffer_width=100., buffer_relaxation=None,
                  L=100., z0=.01, l=10.):
         '''Class initialization
@@ -138,7 +138,7 @@ class WindShear:
         self.set_computational_grid()
 
 
-    def __call__(self, u0, udir):
+    def __call__(self, u0, udir, process_separation):
         '''Compute wind shear for given wind speed and direction
         
         Parameters
@@ -149,21 +149,24 @@ class WindShear:
             Wind direction in degrees
         
         '''
+        u1 = np.zeros(u0.shape)
         
-        u1 = u0/u0 * 0.76 #why??
+        ix = u0 != 0.
+        u1[ix] = u0[ix]/u0[ix] * 0.76 #why??
         
         # Populate computational-grid with topography
         self.populate_computational_grid(-udir)
         
         # Compute separation bubble
-        zsep = self.separation()
-        dzsep = np.maximum(zsep - self.cgrid['z'], 0.)
+        if process_separation:
+            
+            zsep = self.separation()
         
-        # Change topography to separation bubble
-        ix = zsep > self.cgrid['z']
-        self.cgrid['z'][ix] = zsep[ix]
+            ix = zsep >= self.cgrid['z']
+            self.cgrid['z'][ix] = zsep[ix]
         
         # Compute shear stresses on computational grid
+        
         self.compute_shear(u1)
                     
         gc = self.cgrid
@@ -175,9 +178,6 @@ class WindShear:
         
         # Add shear
         self.add_shear() 
-        
-        # Separation bubble on shear
-        self.separation_shear(dzsep)
         
         # Rotation
 
@@ -191,10 +191,12 @@ class WindShear:
                                                gi['x'], gi['y'])
         self.igrid['tauy'] = self.interpolate(gc['x'], gc['y'], gc['tauy'],
                                                gi['x'], gi['y'])
-        self.igrid['zsep']  = self.interpolate(gc['x'], gc['y'], zsep,
-                                               gi['x'], gi['y'])
         
-        self.igrid['zsep'][:,-5:] = 0.
+        if process_separation:
+            self.igrid['zsep']  = self.interpolate(gc['x'], gc['y'], zsep,
+                                                   gi['x'], gi['y'])
+        
+            self.igrid['zsep'][:,-5:] = 0.
         
         gi['x'], gi['y'] = self.rotate(gi['x'], gi['y'], -udir, origin=(self.x0, self.y0))
         gc['x'], gc['y'] = self.rotate(gc['x'], gc['y'], -udir, origin=(self.x0, self.y0))
@@ -335,7 +337,7 @@ class WindShear:
         dxi = gi['x'][1,1]-gi['x'][0,0]
         dyi = gi['y'][1,1]-gi['y'][0,0]
         
-        buf = 50 # amount of cells
+        buf = 100 # amount of cells
       
         xi, yi = np.meshgrid(np.linspace(gi['x'][0,0]-buf*dxi,gi['x'][-1,-1]+buf*dxi,gi['x'].shape[1]+2*buf), 
                              np.linspace(gi['y'][0,0]-buf*dyi,gi['y'][-1,-1]+buf*dyi,gi['y'].shape[0]+2*buf))
@@ -403,7 +405,7 @@ class WindShear:
         hs = np.fft.fft2(g['z'])
         
         # Filter
-        hs = self.filter_highfrequenies(kx, ky, hs, nfilter, 0.1)
+        hs = self.filter_highfrequenies(kx, ky, hs, nfilter, 0.01)
 
         # 1. Auxiliary variables
         #-----------------------
@@ -691,13 +693,16 @@ class WindShear:
         nx = len(g['z'][1])
         ny = len(g['z'][0])
         x = g['x']
+        y = g['y']
         z = g['z']
         
         # Initialize arrays
     
-        dz  = np.zeros(g['z'].shape)
+        dzx  = np.zeros(g['z'].shape)
+        dzy  = np.zeros(g['z'].shape)
         stall = np.zeros(g['z'].shape)
         bubble = np.zeros(g['z'].shape)
+        zsep = np.zeros(g['z'].shape) # total separation bubble
         zsep0 = np.zeros(g['z'].shape) # zero-order separation bubble
         zsep1 = np.zeros(g['z'].shape) # first-order separation bubble
         dzdx0 = np.zeros(g['z'].shape)
@@ -705,75 +710,116 @@ class WindShear:
         
 #        zmin = np.zeros(ny)
         
-        slope = np.deg2rad(11.) #p['M_dSlope']
+        slope = 0.25 #np.deg2rad(11.) #p['M_dSlope']
         
 #        zfft = np.zeros(g['z'].shape, dtype=np.complex)
         k = np.array(range(0,nx))
 
         # Compute angle of separation
+#        
+#        dz[:,:-1] = np.rad2deg(np.arctan((z[:,1:]-z[:,:-1])/g['dx']))
+#        dz[:,-1] = dz[:,-2]
         
-        dz[:,:-1] = np.rad2deg(np.arctan((z[:,1:]-z[:,:-1])/g['dx']))
-        dz[:,-1] = dz[:,-2]
+        dzx[:,1:] = (z[:,1:]-z[:,:-1])/(x[:,1:]-x[:,:-1])
+        dzy[1:-1,:] = (z[2:,:]-z[:-2,:])/(y[2:,:]-y[:-2,:])
+        
+        # Boundaries
+        dzx[:,0] = dzx[:,1]
+        dzy[0,:] = dzy[1,:]    
+        dzx[:,-1] = dzx[:,-2]
+        dzy[-1,:] = dzy[-2,:]
+        
+        dz = np.hypot(dzx,dzy)
         
         # Determine location of separation bubbles
-        stall += np.logical_and(dz < 0, abs(dz) > 30.) #p['M_sep']
+        stall += np.logical_and(dzx < 0, np.rad2deg(np.arctan(dz)) > 30.) #p['M_sep']
         
         stall[1:-1,:] += np.logical_and(stall[1:-1,:]==0, stall[:-2,:]>0, stall[2:,:]>0)
         stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0) 
         
-        bubble[:,:-1] = np.logical_and(stall[:,:-1] == 0, stall[:,1:] == 1)
-#        bubble[:,-50:] = 0. # Check where this happens!
+        bubble[:,:-1] = np.logical_and(stall[:,:-1] == 0, stall[:,1:] > 0) # define bubble
+        
+        # Shift bubble n cells back
+        n = 2
+        bubble[:,:-n] = bubble[:,n:]
+        bubble[:,:n] = 0
+        
         bubble = bubble.astype(int)
-
-        # Walk through all separation bubbles and determine polynoms
-        
-        dzdx0[:,1:][bubble] = (z[:,1:]-z[:,:-1])/(1*g['dx'])
-        dzdx0[:,-1:] = 0.
-        
-        a = dzdx0 / slope
-        l = np.minimum(np.maximum((1.5 * z / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
-        
-        a2 = -3 * z/(l**2) - 2 * dzdx0 / (l)
-        a3 =  2 * z/(l**3) +     dzdx0 / (l**2)
         
         # Count separation bubbles
         
         n = np.sum(bubble)
         bubble_n = np.asarray(np.where(bubble == True)).T
         
+        zfft = np.zeros((ny, nx), dtype=np.complex)
+        
         for k in range(0, n):
             
             i = bubble_n[k,1]
             j = bubble_n[k,0]
+            
+            # Walk through all separation bubbles and determine polynoms
+        
+            dzdx0 = (z[j,i]-z[j,i-2])/(2*g['dx'])
+        
+            a = dzdx0 / slope
+            l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
+            
+            a2 = -3 * z[j,i]/l**2 - 2 * dzdx0 / l
+            a3 =  2 * z[j,i]/l**3 +     dzdx0 / l**2
           
-            i_max = min(i+int(l[j,i]/g['dx']),int(nx-1))
+            i_max = min(i+int(l/g['dx']),int(nx-1))
             xs = x[j,i:i_max] - x[j,i]
             
-            zsep0[j,i:i_max] = ((a3[j,i] * xs + a2[j,i]) * xs + dzdx0[j,i]) * xs + z[j,i]
+            zsep0[j,i:i_max] = ((a3 * xs + a2) * xs + dzdx0) * xs + z[j,i]
+            
+            # First order Filter
+            
+            Cut = 1.5
+            dk = 2.0 * np.pi / (np.max(g['x']))
+            zfft[j,:] = np.fft.fft(zsep0[j,:])
+            zfft[j,:] *= np.exp(-(dk*k*g['dx'])**2./(2.*Cut**2.))
+            zsep0[j,:] = np.real(np.fft.ifft(zfft[j,:]))
+            
+            # First order
+            
+            dzdx1 = (zsep0[j,i+1]-zsep0[j,i])/(g['dx'])
+            
+            a = dzdx1 / slope
+            l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
+            
+            a2 = -3 * z[j,i]/l**2 - 2 * dzdx1 / l
+            a3 =  2 * z[j,i]/l**3 +     dzdx1 / l**2
+          
+            i_max = min(i+int(l/g['dx']),int(nx-1))
+            xs = x[j,i:i_max] - x[j,i]
+            
+            zsep1[j,i:i_max] = ((a3 * xs + a2) * xs + dzdx1) * xs + z[j,i]
             
             # Separation bubble cuts dune profile
             
-            cut_list = np.logical_and(zsep0[j, i:i_max] >= z[j,i:i_max], zsep0[j, i+1:i_max+1] < z[j,i:i_max])  
-            cut_list = cut_list.astype(int)
-            
-            if np.sum(cut_list[5:int(l[j,i]/g['dx'])]) > 0:
-            
-                i_cut_list = np.asarray(np.where(cut_list[5:] == True)).T
-                i_cut = int(i_cut_list[0]) + i
-    
-                dzdx1 = (z[j,i_cut] - z[j,i_cut-1])/g['dx']
-                l_cut = x[j,i_cut] - x[j,i]
-                
-                a2_cut = (3.*z[j,i_cut]-dzdx1*l_cut-2.*dzdx0[j,i]*l_cut-3.*z[j,i])/(l_cut**2.)
-                a3_cut = (dzdx1*l_cut-2*z[j,i_cut]+dzdx0[j,i]*l_cut+2*z[j,i])/(l_cut**3.)
-                
-                i_max = min(i+int(l_cut/g['dx']),int(nx-1))
-                xs = x[j,i:i_max] - x[j,i]
-                zsep1[j,i:i_max] = ((a3_cut*xs + a2_cut) * xs + dzdx0[j,i])*xs + z[j,i]
-            else:
-                zsep1[j,i:i_max] = zsep0[j,i:i_max]
+#            cut_list = np.logical_and(zsep0[j, i:i_max] >= z[j,i:i_max], zsep0[j, i+1:i_max+1] < z[j,i:i_max])  
+#            cut_list = cut_list.astype(int)
+#            
+#            if np.sum(cut_list[5:int(l[j,i]/g['dx'])]) > 0:
+#            
+#                i_cut_list = np.asarray(np.where(cut_list[5:] == True)).T
+#                i_cut = int(i_cut_list[0]) + i
+#    
+#                dzdx1 = (z[j,i_cut] - z[j,i_cut-2])/(2.*g['dx'])
+#                l_cut = x[j,i_cut] - x[j,i]
+#                
+#                a2_cut = (3.*z[j,i_cut]-dzdx1*l_cut-2.*dzdx0[j,i]*l_cut-3.*z[j,i])/(l_cut**2.)
+#                a3_cut = (dzdx1*l_cut-2*z[j,i_cut]+dzdx0[j,i]*l_cut+2*z[j,i])/(l_cut**3.)
+#                
+#                i_max = min(i+int(l_cut/g['dx']),int(nx-1))
+#                xs = x[j,i:i_max] - x[j,i]
+#                zsep1[j,i:i_max] = ((a3_cut*xs + a2_cut) * xs + dzdx0[j,i])*xs + z[j,i]
+#                zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep1[j,i:i_max])
+#            else:
+            zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep1[j,i:i_max])
 
-        return zsep1
+        return zsep
     
     def separation_shear(self, dzsep):
         

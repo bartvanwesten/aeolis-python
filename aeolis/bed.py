@@ -95,9 +95,22 @@ def initialize(s, p):
         
     return s
 
-def old(s, p):
+def slope(s , p):
     
-#    s['zbold'] = s['zb'].copy()
+    z = s['zb']
+    x = s['x']
+    y = s['y']
+    
+    s['dzs'][:,:-1] = (z[:,:-1]-z[:,1:])/(x[:,:-1]-x[:,1:])
+    s['dzn'][1:-1,:] = (z[:-2,:]-z[2:,:])/(y[:-2,:]-y[2:,:])
+    
+    # Boundaries
+    s['dzs'][:,0] = s['dzs'][:,1]
+    s['dzn'][0,:] = s['dzn'][1,:]    
+    s['dzs'][:,-1] = s['dzs'][:,-2]
+    s['dzn'][-1,:] = s['dzn'][-2,:]
+    
+    s['dzsn'] = np.hypot(s['dzs'],s['dzn'])
     
     return s
 
@@ -118,19 +131,8 @@ def time(s , p ):
 
     # Calculate average
     s['dzyear_avg'] = s['dzyear_time'].sum(2) / p['nsavetimes']
-
-            
-#    if p['_time'] % p['dz_interval'] == 0.:
-#                
-#        s['dz_avg'] = (s['zb'] - s['zbold'])/p['dz_interval']
-#        
-#        s['zbold'] = s['zb'].copy()
-#        s['dzyear'] = s['dz_avg'] * 3600. * 24. * 365.25
     
     return s
-
-#def hydro_supply(s, p):
-    
 
 def update(s, p):
     '''Update bathymetry and bed composition
@@ -216,19 +218,6 @@ def update(s, p):
         dz = dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
         
         # redistribute sediment from inactive zone to marine interaction zone
-
-#        border_low = np.min(s['zs']) - 1.
-#        border_high = np.min(s['zs']) + 0.1 # Interaction border, see paper, redefine
-        
-#        volume = np.sum(dz[:,-10:], axis = 1)
-#        length_zone = np.sum(ix, axis = 1)
-        
-#        supply = volume / length_zone
-#        supply_grid = np.repeat(supply[:,np.newaxis], nx+1, axis = 1)
-        
-#        dz[ix] = 0. #+= supply_grid[ix]
-        
-#        dz[:,-10:] = 0.
         
         s['dzyear'] = dz * (3600. * 24. * 365.25) / p['dt']
         
@@ -237,6 +226,13 @@ def update(s, p):
         
         ix = s['zs'] > ( s['zb'] + 0.01 )
         s['zb'][ix] += (s['zb0'][ix] - s['zb'][ix])*0.01
+        
+        # TEMP FOR INFLUX
+        
+#        s['zb'][0,:] = 0.
+#        s['zb'][-1,:] = 0.
+#        s['zb'][:,0] = 0.
+#        s['zb'][:,-1] = 0.
 
 
     return s
@@ -441,376 +437,79 @@ def mixtoplayer(s, p):
             
     return s
 
-# NEW!
-def avalanche_8_cell(s, p):
-    
-    if p['process_avalanche']:
-    
-        nx = p['nx']+1
-        ny = p['ny']+1
-        
-#        ds = s['dsu']
-#        dn = s['dnv']
-        
-        dx = 1.
-#        dy = 1.
-        
-        x = s['xz']
-        y = s['yz']
-        
-        
-        # Calculation of ratio dsdn
-        
-        dsdn = np.repeat(s['dsdnz'][:,:,np.newaxis], 8, axis = 2)
-        
-        dsdn_neighbour = np.zeros((ny,nx,8))
-        dsdn_neighbour[1:-1,:-2,0] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[1:-1,2:,1] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[:-2,1:-1,2] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[2:,1:-1,3] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[2:,:-2,4] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[2:,2:,5] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[:-2,2:,6] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[:-2,:-2,7] = dsdn[1:-1,1:-1,0]
-        
-        dsdn_fac = np.divide(dsdn, dsdn_neighbour, out=np.zeros_like(dsdn), where = dsdn_neighbour != 0)
-        
-        #parameters
-        Mcr_stat = p['Mcr_stat']
-        Mcr_dyn =  p['Mcr_dyn']
-        
-        # Calculation of dh
-        dh_stat =        np.zeros((ny,nx,8))+1000 # 1000, because np.inf causes errors later on
-        dh_dyn =         np.zeros((ny,nx,8))+1000
-        #statdyndiff =    np.zeros((NY+1,NX+1,8))+1000
-        
-        # Calculation of dh_stat
-        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*dx#(ds[:,:-1]) #Negative X-direction
-        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*dx#(ds[:,1:]) #Positive X-direction
-        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*dx#(dn[:-1,:]) #Negative Y-direction
-        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*dx#(dn[1:,:]) #Positive Y-direction
-        dh_stat[1:,:-1,4]  = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_stat[1:,1:,5]   = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_stat[:-1,1:,6]  = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_stat[:-1,:-1,7] = np.tan(Mcr_stat*(np.pi/180.))*np.sqrt(2*dx**2)#((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
-        
-        # Calculation of dh_dyn
-        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*dx#(ds[:,:-1]) #Negative X-direction
-        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*dx#(ds[:,1:]) #Positive X-direction
-        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*dx#(dn[:-1,:]) #Negative Y-direction
-        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*dx#(dn[1:,:]) #Positive Y-direction
-        dh_dyn[1:,:-1,4]  = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[:-1,1:]-x[1:,:-1])**2. +(y[:-1,1:]-y[1:,:-1])**2.)**0.5 #Negative X-direction and Positive Y-direction
-        dh_dyn[1:,1:,5]   = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[:-1,:-1]-x[1:,1:])**2. +(y[:-1,:-1]-y[1:,1:])**2.)**0.5 #Positive X-direction and Positive Y-direction
-        dh_dyn[:-1,1:,6]  = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[1:,:-1]-x[:-1,1:])**2. +(y[1:,:-1]-y[:-1,1:])**2.)**0.5 #Positive X-direction and Negative Y-direction
-        dh_dyn[:-1,:-1,7] = np.tan(Mcr_dyn*(np.pi/180.))*np.sqrt(2*dx**2)#*((x[1:,1:]-x[:-1,:-1])**2. +(y[1:,1:]-y[:-1,:-1])**2.)**0.5 #Negative X-direction and Negative Y-direction
-        
-        # Calculation of statdyndiff
-        statdyndiff = dh_stat - dh_dyn
-        
-        # Reset counter for while-loop
-        count=-1
-        
-        # Initialize different bathymetries
-        zb = s['zb']
-#        zb0 = zb
-        zb_center = np.zeros((ny,nx,8))
-        zb_neighbour = np.zeros((ny,nx,8))
-        
-        # Start of the while-loop
-        for i in range(p['max_iter']):
-                    
-            count+=1
-            
-            #ZB neighbour
-            zb_center = np.repeat(zb[:,:,np.newaxis], 8, axis = 2)
-            #Negative X-direction
-            zb_neighbour[:,:-1,0] = zb[:,1:]
-            zb_neighbour[:,-1,0] = zb_neighbour[:,-2,0]
-            #Positive X-direction
-            zb_neighbour[:,1:,1] = zb[:,:-1]
-            zb_neighbour[:,0,1] = zb_neighbour[:,1,1]
-            #Negative Y-direction
-            zb_neighbour[:-1,:,2] = zb[1:,:]
-            zb_neighbour[-1,:,2] = zb_neighbour[-2,:,2]
-            #Positive Y-direction
-            zb_neighbour[1:,:,3] = zb[:-1,:]
-            zb_neighbour[0,:,3] = zb_neighbour[1,:,3]
-            #XY
-            zb_neighbour[1:,:-1,4] = zb[:-1,1:]
-            zb_neighbour[0,:,4] = zb_neighbour[1,:,4]
-            zb_neighbour[:,-1,4] = zb_neighbour[:,-2,4]
-            #XY
-            zb_neighbour[1:,1:,5] = zb[:-1,:-1]
-            zb_neighbour[0,:,5] = zb_neighbour[1,:,5]
-            zb_neighbour[:,0,5] = zb_neighbour[:,1,5]
-            #XY
-            zb_neighbour[:-1,1:,6] = zb[1:,:-1]
-            zb_neighbour[-1,:,6] = zb_neighbour[-2,:,6]
-            zb_neighbour[:,0,6] = zb_neighbour[:,1,6]
-            #XY
-            zb_neighbour[:-1,:-1,7] = zb[1:,1:]
-            zb_neighbour[-1,:,7] = zb_neighbour[-2,:,7]
-            zb_neighbour[:,-1,7] = zb_neighbour[:,-2,7]    
-            
-            # Reset arrays
-            total   = np.zeros((ny, nx))
-            surplus = np.zeros((ny, nx, 8))
-            flux    = np.zeros((ny, nx, 8))
-            
-            # Calculate the surpluses, filter negative values and add the statdyndiff
-            surplus = (zb_center - zb_neighbour) - dh_stat
-            surplus = surplus.clip(0.)
-            surplus += (surplus>0) * statdyndiff
-            
-            # Sum all the surplusses
-            total = surplus.sum(axis=2)
-            total = np.repeat(total[:,:,np.newaxis], 8, axis = 2)
-            
-            if np.sum(total) == 0:
-                break
-            else:
-            
-                flux = surplus * np.divide(surplus, total + surplus, out=np.zeros_like(surplus), where = total + surplus != 0)
-                totalflux = flux.sum(axis=2)
-                maxflux = flux.max(axis=2)
-                maxsurplus = surplus.max(axis=2)
-                
-                #Fluxnorm   
-                a1 = maxflux
-                b1 = totalflux
-                c1 = np.divide(a1, b1, out=np.zeros_like(a1), where = b1 != 0)
-                a2 = maxsurplus
-                b2 = 1 + c1
-                c2 = np.divide(a2, b2, out=np.zeros_like(a2), where = b2 != 0)
-                a3 = c2
-                b3 = totalflux
-                fluxnorm = np.divide(a3, b3, out=np.zeros_like(a3), where = b3 != 0)
-                
-                #restribute sediment
-                zb          -= fluxnorm * totalflux# * dsdn_fac
-                zb[:,:-1]   += fluxnorm[:,1:] * flux[:,1:,1] * dsdn_fac[:,1:,1]
-                zb[:,1:]    += fluxnorm[:,:-1] * flux[:,:-1,0] * dsdn_fac[:,:-1,0]
-                zb[:-1,:]   += fluxnorm[1:,:] * flux[1:,:,3] * dsdn_fac[1:,:,3]
-                zb[1:,:]    += fluxnorm[:-1,:] * flux[:-1,:,2] * dsdn_fac[:-1,:,2]
-                zb[1:,:-1]  += fluxnorm[:-1,1:] * flux[:-1,1:,6] * dsdn_fac[:-1,1:,6]
-                zb[1:,1:]   += fluxnorm[:-1,:-1] * flux[:-1,:-1,7] * dsdn_fac[:-1,:-1,7]
-                zb[:-1,1:]  += fluxnorm[1:,:-1] * flux[1:,:-1,4] * dsdn_fac[1:,:-1,4]
-                zb[:-1,:-1] += fluxnorm[1:,1:] * flux[1:,1:,5] * dsdn_fac[1:,1:,5]
-                
-                #Boundary
-                zb[0,:]  = zb[1,:]
-                zb[-1,]  = zb[-2,:]
-                zb[:,0]  = zb[:,1]
-                zb[:,-1] = zb[:,-2]
-        
-#        s['zb']=zb
-#        v0 = np.sum(zb0*s['dsdnz'])
-#        v  = np.sum(zb*s['dsdnz'])
-#        print('v0=',v0,' v=',v)
-    
-    return s
-
-def avalanche_4_cell(s, p):
-    
-    if p['process_avalanche']:
-    
-        nx = p['nx']+1
-        ny = p['ny']+1
-        
-        ds = s['dsu']
-        dn = s['dnv']
-        
-        x = s['xz']
-        y = s['yz']
-        
-        # Calculation of ratio dsdn
-        
-        dsdn = np.repeat(s['dsdnz'][:,:,np.newaxis], 4, axis = 2)
-        
-        dsdn_neighbour = np.zeros((ny,nx,4))
-        dsdn_neighbour[1:-1,:-2,0] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[1:-1,2:,1] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[:-2,1:-1,2] = dsdn[1:-1,1:-1,0]
-        dsdn_neighbour[2:,1:-1,3] = dsdn[1:-1,1:-1,0]
-        
-        dsdn_fac = np.divide(dsdn, dsdn_neighbour, out=np.zeros_like(dsdn), where = dsdn_neighbour != 0)
-        
-        #parameters
-        Mcr_stat = p['Mcr_stat']
-        Mcr_dyn =  p['Mcr_dyn']
-        
-        # Calculation of dh
-        dh_stat =        np.zeros((ny,nx,4))+1000 # 1000, because np.inf causes errors later on
-        dh_dyn =         np.zeros((ny,nx,4))+1000
-        #statdyndiff =    np.zeros((NY+1,NX+1,8))+1000
-        
-        # Calculation of dh_stat
-        dh_stat[:,:-1,0] = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,:-1]) #Negative X-direction
-        dh_stat[:,1:,1]  = np.tan(Mcr_stat*(np.pi/180.))*(ds[:,1:]) #Positive X-direction
-        dh_stat[:-1,:,2] = np.tan(Mcr_stat*(np.pi/180.))*(dn[:-1,:]) #Negative Y-direction
-        dh_stat[1:,:,3]  = np.tan(Mcr_stat*(np.pi/180.))*(dn[1:,:]) #Positive Y-direction
-     
-        # Calculation of dh_dyn
-        dh_dyn[:,:-1,0] = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,:-1]) #Negative X-direction
-        dh_dyn[:,1:,1]  = np.tan(Mcr_dyn*(np.pi/180.))*(ds[:,1:]) #Positive X-direction
-        dh_dyn[:-1,:,2] = np.tan(Mcr_dyn*(np.pi/180.))*(dn[:-1,:]) #Negative Y-direction
-        dh_dyn[1:,:,3]  = np.tan(Mcr_dyn*(np.pi/180.))*(dn[1:,:]) #Positive Y-direction
-        
-        # Calculation of statdyndiff
-        statdyndiff = dh_stat - dh_dyn
-        
-        # Reset counter for while-loop
-        count=-1
-        
-        # Initialize different bathymetries
-        zb = s['zb']
-#        zb0 = zb
-        zb_center = np.zeros((ny,nx,4))
-        zb_neighbour = np.zeros((ny,nx,4))
-        
-        E = 1.0
-        max_iter = 100
-        
-        # Start of the while-loop
-        for i in range(max_iter):
-                    
-            count+=1
-            
-            #ZB neighbour
-            zb_center = np.repeat(zb[:,:,np.newaxis], 4, axis = 2)
-            #Negative X-direction
-            zb_neighbour[:,:-1,0] = zb[:,1:]
-            zb_neighbour[:,-1,0] = zb_neighbour[:,-2,0]
-            #Positive X-direction
-            zb_neighbour[:,1:,1] = zb[:,:-1]
-            zb_neighbour[:,0,1] = zb_neighbour[:,1,1]
-            #Negative Y-direction
-            zb_neighbour[:-1,:,2] = zb[1:,:]
-            zb_neighbour[-1,:,2] = zb_neighbour[-2,:,2]
-            #Positive Y-direction
-            zb_neighbour[1:,:,3] = zb[:-1,:]
-            zb_neighbour[0,:,3] = zb_neighbour[1,:,3]
-            
-            # Reset arrays
-            total   = np.zeros((ny, nx))
-            surplus = np.zeros((ny, nx, 4))
-            flux    = np.zeros((ny, nx, 4))
-            
-            # Calculate the surpluses, filter negative values and add the statdyndiff
-            surplus = (zb_center - zb_neighbour) - dh_stat
-            surplus = surplus.clip(0.)
-            surplus += (surplus>0) * statdyndiff
-            
-            # Sum all the surplusses
-            total = surplus.sum(axis=2)
-            total = np.repeat(total[:,:,np.newaxis], 4, axis = 2)
-            
-            if np.sum(total) == 0:
-                break
-            else:
-            
-                ix = total + surplus != 0
-                flux[ix] = surplus[ix] * surplus[ix] / ( total[ix] + surplus[ix])
-                
-                totalflux = flux.sum(axis=2)
-                maxflux = flux.max(axis=2)
-                maxsurplus = surplus.max(axis=2)
-                
-                #Fluxnorm   
-                a1 = maxflux
-                b1 = totalflux
-                c1 = np.divide(a1, b1, out=np.zeros_like(a1), where = b1 != 0)
-                a2 = maxsurplus
-                b2 = 1 + c1
-                c2 = np.divide(a2, b2, out=np.zeros_like(a2), where = b2 != 0)
-                a3 = c2
-                b3 = totalflux
-                fluxnorm = np.divide(a3, b3, out=np.zeros_like(a3), where = b3 != 0)
-                
-                #restribute sediment
-                zb          -= fluxnorm * totalflux * E
-                zb[:,:-1]   += fluxnorm[:,1:] * flux[:,1:,1] * dsdn_fac[:,1:,1] * E
-                zb[:,1:]    += fluxnorm[:,:-1] * flux[:,:-1,0] * dsdn_fac[:,:-1,0] * E
-                zb[:-1,:]   += fluxnorm[1:,:] * flux[1:,:,3] * dsdn_fac[1:,:,3] * E
-                zb[1:,:]    += fluxnorm[:-1,:] * flux[:-1,:,2] * dsdn_fac[:-1,:,2] * E
-                
-                #Boundary
-                zb[0,:]  = zb[1,:]
-                zb[-1,]  = zb[-2,:]
-                zb[:,0]  = zb[:,1]
-                zb[:,-1] = zb[:,-2]
-                
-    return s
-
 def avalanche(s,p):
     
-    nx = p['nx']+1
-    ny = p['ny']+1
+    if p['process_avalanche']:
     
-    #parameters
-    
-    tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
-    tan_dyn = np.tan(np.deg2rad(p['Mcr_dyn']))
-    
-    E = 0.9
-    
-    grad_h_down = np.zeros((ny,nx,4))
-    flux_down = np.zeros((ny,nx,4))
-    slope_diff = np.zeros((ny,nx))
-    grad_h = np.zeros((ny,nx))
-
-    max_iter_ava = 200
-    
-    s, max_grad_h, grad_h, grad_h_down = calc_grad(s, p)
-    
-    if max_grad_h > tan_stat:
-    
-        for i in range(0,max_iter_ava):
-            
-            grad_h_down *= 0.
-            flux_down *= 0.
-            slope_diff *= 0.
-            grad_h *= 0.
-            
-            s, max_grad_h, grad_h, grad_h_down = calc_grad(s, p)
+        nx = p['nx']+1
+        ny = p['ny']+1
         
-            if max_grad_h < tan_dyn:
-                break
+        #parameters
+        
+        tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
+        tan_dyn = np.tan(np.deg2rad(p['Mcr_dyn']))
+        
+        E = 0.4 # 0.9
+        
+        grad_h_down = np.zeros((ny,nx,4))
+        flux_down = np.zeros((ny,nx,4))
+        slope_diff = np.zeros((ny,nx))
+        grad_h = np.zeros((ny,nx))
+    
+        max_iter_ava = 1000
+        
+        s, max_grad_h, grad_h, grad_h_down = calc_grad(s, p)
+        
+        initiate_avalanche = (max_grad_h > tan_stat) #* (np.max(s['zb']) > 2*tan_stat*s['dsu'][1,1]) # TEMP
+        
+        if initiate_avalanche:
+        
+            for i in range(0,max_iter_ava):
+                
+                grad_h_down *= 0.
+                flux_down *= 0.
+                slope_diff *= 0.
+                grad_h *= 0.
+                
+                s, max_grad_h, grad_h, grad_h_down = calc_grad(s, p)
             
-            # Calculation of flux
-            
-            grad_h_nonerod = (s['zb'] - s['zne']) / s['dsu'] # HAS TO BE ADJUSTED!
-            
-            ix = np.logical_and(grad_h > tan_dyn, grad_h_nonerod > 0)
-            slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(0.9*tan_dyn)
-            
-            ix = grad_h_nonerod < grad_h - tan_dyn 
-            slope_diff[ix] = np.tanh(grad_h_nonerod[ix])
-            
-            ix = grad_h != 0
-            
-            flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
-            flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
-            flux_down[:,:,2][ix] = slope_diff[ix] * grad_h_down[:,:,2][ix] / grad_h[ix]
-            flux_down[:,:,3][ix] = slope_diff[ix] * grad_h_down[:,:,3][ix] / grad_h[ix]
-            
-            # Calculation of change in bed level
-            
-            q_in = np.zeros((ny,nx))
-            
-            q_out = 0.5*np.abs(flux_down[:,:,0]) + 0.5* np.abs(flux_down[:,:,1]) + 0.5*np.abs(flux_down[:,:,2]) + 0.5* np.abs(flux_down[:,:,3])
-            
-            q_in[1:-1,1:-1] =   0.5*(np.maximum(flux_down[1:-1,:-2,0],0.) \
-                                - np.minimum(flux_down[1:-1,2:,0],0.) \
-                                + np.maximum(flux_down[:-2,1:-1,1],0.) \
-                                - np.minimum(flux_down[2:,1:-1,1],0.) \
-                                
-                                + np.maximum(flux_down[1:-1,2:,2],0.) \
-                                - np.minimum(flux_down[1:-1,:-2,2],0.) \
-                                + np.maximum(flux_down[2:,1:-1,3],0.) \
-                                - np.minimum(flux_down[:-2,1:-1,3],0.) )
-            
-            s['zb'] += E * (q_in - q_out)
+                if max_grad_h < tan_dyn:
+                    break
+                
+                # Calculation of flux
+                
+                grad_h_nonerod = (s['zb'] - s['zne']) / s['dsu'] # HAS TO BE ADJUSTED!
+                
+                ix = np.logical_and(grad_h > tan_dyn, grad_h_nonerod > 0)
+                slope_diff[ix] = np.tanh(grad_h[ix]) - np.tanh(0.9*tan_dyn)
+                
+                ix = grad_h_nonerod < grad_h - tan_dyn 
+                slope_diff[ix] = np.tanh(grad_h_nonerod[ix])
+                
+                ix = grad_h != 0
+                
+                flux_down[:,:,0][ix] = slope_diff[ix] * grad_h_down[:,:,0][ix] / grad_h[ix]
+                flux_down[:,:,1][ix] = slope_diff[ix] * grad_h_down[:,:,1][ix] / grad_h[ix]
+                flux_down[:,:,2][ix] = slope_diff[ix] * grad_h_down[:,:,2][ix] / grad_h[ix]
+                flux_down[:,:,3][ix] = slope_diff[ix] * grad_h_down[:,:,3][ix] / grad_h[ix]
+                
+                # Calculation of change in bed level
+                
+                q_in = np.zeros((ny,nx))
+                
+                q_out = 0.5*np.abs(flux_down[:,:,0]) + 0.5* np.abs(flux_down[:,:,1]) + 0.5*np.abs(flux_down[:,:,2]) + 0.5* np.abs(flux_down[:,:,3])
+                
+                q_in[1:-1,1:-1] =   0.5*(np.maximum(flux_down[1:-1,:-2,0],0.) \
+                                    - np.minimum(flux_down[1:-1,2:,0],0.) \
+                                    + np.maximum(flux_down[:-2,1:-1,1],0.) \
+                                    - np.minimum(flux_down[2:,1:-1,1],0.) \
+                                    
+                                    + np.maximum(flux_down[1:-1,2:,2],0.) \
+                                    - np.minimum(flux_down[1:-1,:-2,2],0.) \
+                                    + np.maximum(flux_down[2:,1:-1,3],0.) \
+                                    - np.minimum(flux_down[:-2,1:-1,3],0.) )
+                
+                s['zb'] += E * (q_in - q_out)
 
     return s
 

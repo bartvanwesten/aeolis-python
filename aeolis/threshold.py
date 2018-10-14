@@ -120,8 +120,8 @@ def compute_grainsize(s, p):
     s['uth'][:,:,:] = 1.
     s['uth'][:,:,:] *= p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'])
     
-    s['uth0'][:,:,:] = 1.
-    s['uth0'] *= s['uth']
+#    s['uth0'][:,:,:] = 1.
+    s['uth0'] = s['uth'].copy()
     return s
 
 
@@ -353,21 +353,20 @@ def non_erodible(s, p): #NEW!
     
     # Hard method
     
-    ix = s['zb']<=s['zne']
-    s['uth'][ix] = np.inf
+#    ix = s['zb']<=s['zne']
+#    s['uth'][ix] = np.inf#ustar[ix]*2.
     
     # Smooth method
-    
+#    
 #    alfa = .05
 #    
-#    nf = p['nfractions']
-#    thlyr = s['thlyr'][:,:,0]
-#    thuthlyr = alfa * thlyr
-#    ix = s['zb']<=s['zne']+thuthlyr
-#    
-#    for i in range(nf):
-#        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr[ix])*(s['ustar'][ix]*1.0-s['uth'][ix,i]),s['uth'][ix,i])
-#    
+    nf = p['nfractions']
+    thuthlyr = -0.1
+    ix = s['zb']<=s['zne']+thuthlyr
+    
+    for i in range(nf):
+        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr)*(s['ustar'][ix]*2.0-s['uth'][ix,i]),s['uth'][ix,i])
+    
     return s
 
 

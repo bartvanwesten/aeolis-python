@@ -205,8 +205,8 @@ def poly(s, p, i, j, hb, xb, dx, nx, dhdx, x, h, slope):
     
     l = np.minimum(np.maximum((1.5 * hb / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
     
-    a3 = 2*hb/l**3 + dhdx/l**2
     a2 = -3*hb/l**2 - 2*dhdx/l
+    a3 = 2*hb/l**3 + dhdx/l**2
     
     k_max = min(i+int(l/dx),int(nx))
     xs = x[j,i:k_max] - xb

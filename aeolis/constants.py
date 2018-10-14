@@ -105,7 +105,6 @@ MODEL_STATE = {
         'dxrhoveg',                         # NEW!
         'dhveg',
         'hveg',
-        'Hveg',
         'germinate',                        # NEW!
         'lateral',
         'dzdt',                             # NEW!
@@ -130,10 +129,9 @@ MODEL_STATE = {
         'Ts',                               # NEW! Dynamic adaption time
         'T0',
         'ls',
-        'Ts2',
-        'temp1',
-        'temp2',
-        'gradh',
+        'dzsn',
+        'dzs',
+        'dzn',
     ),
     ('ny','nx','nfractions') : (
         'Cu',                               # [kg/m^2] Equilibrium sediment concentration integrated over saltation height
@@ -161,8 +159,6 @@ MODEL_STATE = {
         'uu0',                               # [m/s^2] Equilibrium sediment velocity NEW!
         'uus0',                              # [m/s^2] Equilibrium sediment velocity in x-direction NEW!
         'uun0',
-        'dhs',
-        'dhn',
     ),
     ('ny','nx','nlayers') : (
         'thlyr',                            # [m] Bed composition layer thickness
@@ -237,11 +233,11 @@ DEFAULT_CONFIG = {
     'grain_dist'          : [1.],               # [-] Initial distribution of sediment fractions
     'nfractions'          : 1,                  # [-] Number of sediment fractions
     'nlayers'             : 3,                  # [-] Number of bed layers
-    'nsavetimes'          : 20,                 # [-] NEW! For smoother results
+    'nsavetimes'          : 1,                 # [-] NEW! For smoother results
     'dz_interval'         : 86400.,             # [s] NEW! For vegetation
     'layer_thickness'     : .01,                # [m] Thickness of bed layers
     'g'                   : 9.81,               # [m/s^2] Gravitational constant
-    'rhoa'                : 1.25,               # [kg/m^3] Air density
+    'rhoa'                : 1.225,              # [kg/m^3] Air density
     'rhop'                : 2650.,              # [kg/m^3] Grain density
     'rhow'                : 1025.,              # [kg/m^3] Water density
     'porosity'            : .4,                 # [-] Sediment porosity
@@ -280,18 +276,21 @@ DEFAULT_CONFIG = {
     'callback'            : None,               # Reference to callback function (e.g. example/callback.py':callback)
     'wind_convention'     : 'cartesian',        # Convention used for the wind direction in the input files
     'alfa'                : 0.4,                # [-]relation between the vertical component of the ejection velocity with the horizontal velocity difference between the impact and ejection
-    'v'                   : 1.5e-5,             # [m2/s] kinematic velocity 
+    'v'                   : 1.5e-5,             # [m2/s] Air velocity 
     'karman'              : 0.41,               # [-] von Karman constant
-    'sedimentinput'       : .002,               # [kg/m/s] NEW!
+    'sedimentinput'       : 0.,               # [kg/m/s] NEW!
     'fixed_layer'         : 0.0,                # NEW! Fixed layer according to Pieter
     'tveg'                : 3.,                 # NEW! [days] default: 3
     'eroveg'              : 1.,                 # NEW! default: 1
-    'Hveg'                : 1.,
-    'V_ver'               : 2.,                 # NEW! [1/year]
-    'V_lat'               : 1.,                 # NEW! [m/year]
-    'germinate'           : 0.005,              # -/year
-    'dz_opt'              : 0.0,                # NEW! [m/year]
-    'dz_tol'              : 0.05                 # NEW! [m/year]
+    'hveg_max'            : 1.,
+    'V_ver'               : 0.,                 # NEW! [1/year]
+    'V_lat'               : 0.,                 # NEW! [m/year]
+    'germinate'           : 0.,              # -/year
+    'lateral'             : 0.,              # -/year
+    'dz_opt'              : 0.,                # NEW! [m/year]
+    'dz_tol'              : 0.05,                 # NEW! [m/year]
+    'dcomp'               : 1.,
+    'veg_gamma'           : 0.1
 }
 
 
