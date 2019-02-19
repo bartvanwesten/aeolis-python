@@ -86,16 +86,21 @@ Static installation
 python setup.py install
 ```
     
-# Model Limitations and possible solutions
+# Model limitations and possible solutions
 Since the model is still in development (and will be for a long time) it has its limitations.
 These limitations can be divided into two categories" (for more information, see chapter 5-7 in http://resolver.tudelft.nl/uuid:83344d5b-f232-4085-985c-d1ec38903254):
 
 ### "Academic/simplistic" dune development
 The current implementation of processes had the aim to make the model capable of simulating academic dune development (barchan, parabolic, embryo dunes). In order to validate the simulation results, results from CDM are used. The initial simulation results are reasonably well, but differ slightly from CDM and computations are significantly slower. In order to improve this, the following aspects of the model should be considered:
-  - Advection equation
-  - Multi-fraction sediment transport
-  - Grid resolution
-  - Computational speed (10x-100x, not only workability also increases work-range)
+  - Due to differences between the advection schemes of the "original" AeoLiS and CDM, the current implementation of the advection scheme is a not-so-trivial combination of both CDM and AeoLiS.
+  - The "original" AeoLiS model is capable of simulating multi-fraction sediment transport. However, since the implementation of the new advection equation is not completely finished, the model is not yet completely capable of simulating multi-fraction sediment transport. 
+  - The computational speed of the model is significantly lower than that of CDM. While the absolute difference is not known, simulations that have been performed with CDM would take years to do with AeoLiS. A rough estimate of the difference in computational speed would be that CDM is 10 to 100 times faster. Improvements to the computational speed would not only increase workability but also the applicability of the model. 
+  Several problems have be encountered during the simulation of the parabolic dune and a possible cause could be the difference in grid-resolution (CDM: 0.25 x 0.25 m and AeoLiS: 1.0 x 1.0 m). The simulation of a single barchan dune with AeoLiS takes approximately 6 hours to complete, considering the grid-resolution of CDM that would increase to 100 hours. Additionally, it should be taken into account that CDM has performed simulations of complete barchan dune fields (much larger spatial and temporal dimensions). These kind of simulations would take years to run with AeoLiS. 
+  
+Action-list:
+- Improve/re-write the AeoLiS solver-module, taken into account changes to the advection scheme, solving the multi-fraction sediment transport problem and computational speed. 
+- Check which functions demands the most computational time. Afterwards optimize the code or possibilily replacing them with extensions to compiled code(?) (Fortran?).
+- Re-run barchan/parabolic/embryo dunes with finer grid resolutions
   
 ### "Realistic/complex" dune development
 AeoLiS has the potential to simulate the behaviour of complete coastal areas, but it still lacks the description of many processes. In order to increase the quantitative predicitability of the model, the implementation of the following processes should be consired. More information on these processes can be found in chapter 7 of http://resolver.tudelft.nl/uuid:83344d5b-f232-4085-985c-d1ec38903254. 
