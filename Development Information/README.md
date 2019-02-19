@@ -88,20 +88,31 @@ Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Liv
 2. Create an environment 'aeolis' in the Anaconda Navigator.
 3. Open the Anaconda Prompt and run 'activate aeolis' to activate the enviroment.
 4. Run the following commands:
-  - pip install numpy
-  - pip install scipy
-  - pip install netcdf4
-  - pip install bmi-python
+
+```
+ pip install numpy
+ pip install scipy
+ pip install netcdf4
+ pip install bmi-python
+```
   
 ## Installation  
 5. The installation-method of AeoLiS depends on the desired AeoLiS-version
-  - "Original" (Hoonhout, 2017) AeoLiS-version:
-    In Anaconda Prompt run:
-    - pip install aeolis
-  - Alternative AeoLiS version:
-    Download/clone the desired AeoLiS version and in Anaconda Prompt run:
-    - python setup.py develop (for development)
-    - python setup.py install (for static installation)
+5a. "Original" (Hoonhout, 2017) AeoLiS-version. In Anaconda Prompt run:
+```
+pip install aeolis
+```
+
+5b. Alternative AeoLiS (newer) version. Download/clone the desired AeoLiS version and in Anaconda Prompt run:
+
+Development
+```
+python setup.py develop
+```
+Static installation
+```
+python setup.py install
+```
     
 # Model Limitations and possible solutions
 
