@@ -104,7 +104,7 @@ Since these steps are time-consuming, a simplified interpolation function is use
   
   
 Action-list:
-- Improve/re-write the AeoLiS solver-module, taken into account changes to the advection scheme, solving the multi-fraction sediment transport problem and computational speed. 
+- Improve/re-write/clean-up (currently it is a mess) the AeoLiS solver (model.py), taken into account changes to the advection scheme, solving the multi-fraction sediment transport problem and computational speed. 
 - Check which functions demands the most computational time. Afterwards optimize the code or possibilily replacing them with extensions to compiled code(?) (Fortran?).
 - Improve grid rotation and interpolation in the shear-module.
 - Re-run barchan/parabolic/embryo dunes with finer grid resolutions
