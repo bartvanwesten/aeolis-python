@@ -32,5 +32,34 @@ Grant 291206 Nearshore Monitoring and Modeling
 
 ```
 aeolis params.txt
-aeolis-wind wind.txt --mean=6 --duration=3600
 ```
+
+# AeoLiS development
+
+The following physical processes have been recently implemented:
+- Saltation model (Sauermann, 2001)
+- Analytical perturbation theory (Weng, 1991)
+- Separation bubble (Sauermann, 2001)
+- User-defined non-erodible layer
+- Avalanching
+- 
+
+These implementations mainly were derived from CDM (Coastal Dune Model) and DUBEVEG (DUne-BEach-VEGetation).
+
+The new AeoLiS version is now capable of simulating several aspects of dune development, 
+including the development of barchan dunes, parabolic and embryo dune fields.
+
+# Installation
+
+## Prerequisites 
+
+1. Install Anaconda from https://www.continuum.io/downloads (Python 3.x version).
+2. Create an environment 'aeolis' in the Anaconda Navigator.
+3. Open the Anaconda Prompt and run 'activate aeolis' to activate the enviroment.
+4. Run the following commands:
+  - pip install numpy
+  - pip install scipy
+  - pip install netcdf4
+  - pip install bmi-python
+  
+5. The installation-method of AeoLiS depends on the desired AeoLiS-version
