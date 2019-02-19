@@ -55,14 +55,6 @@ including the formation of barchan dunes, parabolic and embryo dune fields.
 
 ## List of relevant literature
 
-Durán, O., & Herrmann, H. J. (2006). Vegetation against dune mobility. Physical review letters, 97(18), 188001.
-
-Raupach, M. R., Gillette, D. A., & Leys, J. F. (1993). The effect of roughness elements on wind erosion threshold. Journal of Geophysical Research: Atmospheres, 98(D2), 3023-3029.
-
-Sauermann, G., Kroy, K., & Herrmann, H. J. (2001). Continuum saltation model for sand dunes. Physical Review E, 64(3), 031305.
-
-Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Livingstone, I., & Castro, I. (1991). Air flow and sand transport over sand-dunes. In Aeolian Grain Transport (pp. 1-22). Springer, Vienna.
-
 ### CDM
 
 Durán, O. (2007). Vegetated dunes and barchan dune fields.
@@ -79,6 +71,15 @@ van Westen, B. (2018). “Numerical modelling of aeolian coastal landform develo
 
 De Groot, A. V., Berendse, F., Riksen, M., Baas, A., Slim, P. A., Van Dobben, H. F., & Stroosnijder, L. (2011). Modelling coastal dune formation and associated vegetation development.
 
+### Background of physical processes and implementations
+
+Durán, O., & Herrmann, H. J. (2006). Vegetation against dune mobility. Physical review letters, 97(18), 188001.
+
+Raupach, M. R., Gillette, D. A., & Leys, J. F. (1993). The effect of roughness elements on wind erosion threshold. Journal of Geophysical Research: Atmospheres, 98(D2), 3023-3029.
+
+Sauermann, G., Kroy, K., & Herrmann, H. J. (2001). Continuum saltation model for sand dunes. Physical Review E, 64(3), 031305.
+
+Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Livingstone, I., & Castro, I. (1991). Air flow and sand transport over sand-dunes. In Aeolian Grain Transport (pp. 1-22). Springer, Vienna.
 
 # Installation
 
@@ -94,3 +95,10 @@ De Groot, A. V., Berendse, F., Riksen, M., Baas, A., Slim, P. A., Van Dobben, H.
   - pip install bmi-python
   
 5. The installation-method of AeoLiS depends on the desired AeoLiS-version
+  - "Original" (Hoonhout, 2017) AeoLiS-version:
+    In Anaconda Prompt run:
+    - pip install aeolis
+  - Alternative AeoLiS version:
+    Download/clone the desired AeoLiS version and in Anaconda Prompt run:
+    - python setup.py develop (for development)
+    - python setup.py install (for static installation)
