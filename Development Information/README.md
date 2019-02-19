@@ -42,12 +42,43 @@ The following physical processes have been recently implemented:
 - Separation bubble (Sauermann, 2001)
 - User-defined non-erodible layer
 - Avalanching
-- 
+- Vegetation establishment (germination + distribution)
+- Vegetation growth (Duran, 2006)
+- Vegetation lateral propagation (DUBEVEG)
+- Vegetation shear stress reduction (Raupach, 1993)
+- Influence of hydrodynamics on morphology and vegetation
 
-These implementations mainly were derived from CDM (Coastal Dune Model) and DUBEVEG (DUne-BEach-VEGetation).
+These implementations were mainly derived from CDM (Coastal Dune Model) and DUBEVEG (DUne-BEach-VEGetation).
 
 The new AeoLiS version is now capable of simulating several aspects of dune development, 
-including the development of barchan dunes, parabolic and embryo dune fields.
+including the formation of barchan dunes, parabolic and embryo dune fields.
+
+## List of relevant literature
+
+Durán, O., & Herrmann, H. J. (2006). Vegetation against dune mobility. Physical review letters, 97(18), 188001.
+
+Raupach, M. R., Gillette, D. A., & Leys, J. F. (1993). The effect of roughness elements on wind erosion threshold. Journal of Geophysical Research: Atmospheres, 98(D2), 3023-3029.
+
+Sauermann, G., Kroy, K., & Herrmann, H. J. (2001). Continuum saltation model for sand dunes. Physical Review E, 64(3), 031305.
+
+Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Livingstone, I., & Castro, I. (1991). Air flow and sand transport over sand-dunes. In Aeolian Grain Transport (pp. 1-22). Springer, Vienna.
+
+### CDM
+
+Durán, O. (2007). Vegetated dunes and barchan dune fields.
+
+Parteli, E. J., Kroy, K., Tsoar, H., Andrade, J. S., & Pöschel, T. (2014). Morphodynamic modeling of aeolian dunes: Review and future plans. The European Physical Journal Special Topics, 223(11), 2269-2283.
+
+### AeoLiS
+
+Hoonhout, B. (2017). Aeolian Sediment Availability and Transport. https://doi.org/10.4233/uuid:e84894d6-87d2-4006-a8c2-d9fbfacabddc
+
+van Westen, B. (2018). “Numerical modelling of aeolian coastal landform development,” M.Sc. Thesis. Technical University of Delft. Delft, the Netherlands. http://resolver.tudelft.nl/uuid:83344d5b-f232-4085-985c-d1ec38903254 
+
+### DUBEVEG
+
+De Groot, A. V., Berendse, F., Riksen, M., Baas, A., Slim, P. A., Van Dobben, H. F., & Stroosnijder, L. (2011). Modelling coastal dune formation and associated vegetation development.
+
 
 # Installation
 
