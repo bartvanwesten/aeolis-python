@@ -101,6 +101,7 @@ The current implementation of processes had the aim to make the model capable of
     3. The spatial variation in shear stress as a result of morphology is computed
     4. The results are interpolated over the original grid
 Since these steps are time-consuming, a simplified interpolation function is used. As a result only equidistant grids are allowed. A better method would an implementation following: https://stackoverflow.com/questions/20915502/speedup-scipy-griddata-for-multiple-interpolations-between-two-irregular-grids.
+ - Since it was not possible to fully simulate a parabolic dune, the influence of vegetation characteristics on the shape of parabolic dunes could not be evaluated. Therefore, in the current version of the model, the vegetation formulation as by Duran, 2006 is implemented. Once the other issues have been solved, the implementation of vegetation can be further improved.
  - Other remarks: The newly implemented processes are still in an early stage of development. As a result, not all parameters covered in the configuration files, comments are missing, test files are lacking, a lot of parameters that are not relevant anymore steted in the constants.py, etc.. 
   
   
