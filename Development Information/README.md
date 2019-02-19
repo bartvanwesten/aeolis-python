@@ -69,6 +69,7 @@ including the formation of barchan dunes, parabolic and embryo dune fields.
   
 ### Installation of AeoLiS
 5. The installation-method of AeoLiS depends on the desired AeoLiS-version
+
 5a. "Original" (Hoonhout, 2017) AeoLiS-version. In Anaconda Prompt run:
 ```
 pip install aeolis
