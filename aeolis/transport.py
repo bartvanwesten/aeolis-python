@@ -111,10 +111,7 @@ def grainspeed(s,p):
 
     ueff = np.zeros(s['uth'].shape)
 
-#    ueff = (uth/kappa)*(np.log(z1/z0)+2*(np.sqrt(1+z1/zm*(ustar**2/uth**2-1))-1))
-#    ueff = (uth/kappa)*(np.log(z1/z0)+2*(np.sqrt(1+z1/zm*(np.maximum(ustar**2/uth**2,1.)-1))-1))
     ueff = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(np.maximum(ustar/uth,1.)-1))
-#    ueffn = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(np.maximum(ustarn/uth,1.)-1))
     
     ueff0 = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(ustar0/uth-1))
     
@@ -158,9 +155,6 @@ def grainspeed(s,p):
     dhs   = np.repeat(dzs[:,:,np.newaxis], nf, axis = 0)
     dhn   = np.repeat(dzn[:,:,np.newaxis], nf, axis = 0)
     
-#    dhs[:,:,:] *= 0.
-#    dhn[:,:,:] *= 0.
-    
     # Wind direction
     
     ix = ustar != 0.
@@ -172,14 +166,9 @@ def grainspeed(s,p):
     etn0 = 0.
     
     # Add
-
-#    dh = np.hypot(dhs,dhn)
-#    et = np.hypot(ets,etn)
     
     dh0[:,:,:] = 0.
     et0[:,:,:] = 1.
-    
-#    Ax = et + 2*alfa*dh
     
     Axs = ets + 2*alfa*dhs
     Axn = etn + 2*alfa*dhn
@@ -262,9 +251,6 @@ def equilibrium(s, p):
             logger.log_and_raise('Unknown transport formulation [%s]' % p['method_transport'], exc=ValueError)
     
     s['Cu'] *= p['accfac']
-    
-    #test
-#    s['Cu'][:,0] = s['Cu0'][:,0]
 
     return s
 
@@ -360,47 +346,13 @@ def saturation_time(s,p):
     
     uth = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'][0])
     
-#     Low grain speeds
+    # Low grain speeds
     ix  = s['ustar'] <= uth
     s['Ts'][ix]  = Ts_max
     
     jx = s['zsep'] > s['zb']
     s['Ts'][jx] = 0.25
     
-#    s['Ts'] *= s['zsepdelta']
-    
     s['Ts'] = np.maximum(np.minimum(s['Ts'],Ts_max),Ts_min)
-#    
-#    Cut = 10.0
-#    
-#    parfft = np.fft.fft2(s['Ts'])
-#    dk = 2.0 * np.pi / np.max(s['x'])
-#    fac = np.exp(-(dk*s['x']**2.)/(2.*Cut**2.))
-#    parfft *= fac
-#    s['Ts'] = np.real(np.fft.ifft2(parfft))
-#    
-#    parfft = np.fft.fft2(s['Ts'])
-#    dk = 2.0 * np.pi / np.max(s['y'])
-#    fac = np.exp(-(dk*s['y']**2.)/(2.*Cut**2.))
-#    parfft *= fac
-#    s['Ts'] = np.real(np.fft.ifft2(parfft))
-#    
-#    zerostate = Ts0
-#    
-#    for j in range(0,p['ny']):
-#        avg = np.average(s['Ts'][j,:10])
-#        zeroavg = np.average(zerostate[j,:])
-#        s['Ts'][j,:]+=(zeroavg-avg)
-#    for i in range(0,p['nx']):
-#        avg = np.average(s['Ts'][:10,i])
-#        zeroavg = np.average(zerostate[:,i])
-#        s['Ts'][:,i]+=(zeroavg-avg)
-#    
-#    Ts_max = 1.5
-#    
-#    s['Ts'] = np.maximum(np.minimum(s['Ts'],Ts_max),.5) 
-#    s['Ts'][:,:] = p['T']
-#    s['Ts'] *= s['zsepdelta']
-#    s['Ts'] = np.maximum(s['Ts'],.2)
     
     return s

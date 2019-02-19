@@ -40,10 +40,7 @@ def initialize (s,p):
     s['rhoveg'][:,:] = 0.
     s['germinate'][:,:] = 0.
     s['lateral'][:,:] = 0.
-    
-    # SINGLE EMBRYO
-#    s['germinate'][25,25] = 1.
-    
+
     return s
 
 def germinate (s,p):
@@ -60,10 +57,10 @@ def germinate (s,p):
     
     s['germinate'] += (s['dz_avg'] >= 0.) * (p['_time'] > p['dz_interval']) * (germination <= p_germinate_dt)
     s['germinate'] = np.minimum(s['germinate'],1.)
-    
+
     # SINGLE EMBRYO TEST
 #    s['germinate'][25,25] = 1.
-    
+
     # Lateral expension
     
     dx = s['dsu'][2,2]
@@ -132,64 +129,25 @@ def grow (s, p):
     return s
 
 def vegshear(s, p):
+
+    # Raupach, 1993
     
     roughness = 16.
     
     s['vegfac']= 1./(1. + roughness*s['rhoveg'])
-#    
+
     ets = np.zeros(s['zb'].shape)
     etn = np.zeros(s['zb'].shape)
     ets[:,:] = 1.
-#    
+
     ix = s['ustar'] != 0.
     ets[ix] = s['ustars'][ix]/s['ustar'][ix]
     etn[ix] = s['ustarn'][ix]/s['ustar'][ix]
     
     s['ustar'] *= s['vegfac']
-#    s['ustarn'] *= s['vegfac']
     
     s['ustars'] = ets * s['ustar']
     s['ustarn'] = etn * s['ustar']
-    
-#    s['ustar'] = np.hypot(s['ustars'], s['ustarn'])
+
     
     return s
-
-#def grow_cdm (s, p, l, t):
-# 
-# CDM Method 1
-#    Vveg_year = 15. # m/year
-#    Vveg = Vveg_year / (365.25 * 24 * 3600) # m/s
-#    Hveg = 1. # [m]
-#    
-#    # From Marco 2011
-#    
-#    Vveg *= (s['dz_avg'] > 0.)
-#    s['dhveg'] = Vveg * (1- s['hveg']/Hveg) - np.abs(s['dz_avg'])/p['dt']
-#    s['hveg'] += s['dhveg']*p['dt']
-#    
-#    s['hveg'] = np.maximum(s['hveg'],0.)
-#
-#    s['rhoveg'] = (s['hveg']/Hveg)**2.
-#    
-#    s['drhoveg'] = (1-s['rhoveg'])/(p['tveg']*3600*24) - p['eroveg']/p['Hveg']*s['dz_avg'] # Make month or something...
-#    s['rhoveg'] += s['drhoveg']*p['dt']
-#    
-#    # Germination has to happen again after vegetation died
-#    s['germinate'] *= (s['rhoveg']!=0.)
-#    
-#    return s
-#    
-#def grow_cdm2 (s, p):
-#    
-#    ix = s['germinate'] != 0.
-#    
-#    s['drhoveg'][:,:] *= 0.
-#    s['drhoveg'][ix] = (1.-s['rhoveg'][ix])/(p['tveg']*86400.) - p['eroveg']*np.abs(s['dz_avg'][ix])/(p['Hveg']*p['dt']) # Make month or something... 
-#    
-#    s['rhoveg'] += s['drhoveg']*p['dt']
-#    s['rhoveg'] = np.maximum(np.minimum(s['rhoveg'],1.),0.)
-#    
-#    s['germinate'] *= (s['rhoveg']!=0.)
-#    
-#    return s

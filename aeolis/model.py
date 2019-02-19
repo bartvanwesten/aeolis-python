@@ -51,7 +51,7 @@ import aeolis.transport
 import aeolis.hydro
 import aeolis.netcdf
 import aeolis.constants
-import aeolis.separation
+# import aeolis.separation
 import aeolis.vegetation
 import aeolis.gridparams
 import aeolis.shear
