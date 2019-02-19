@@ -84,7 +84,6 @@ Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Liv
 # Installation
 
 ## Prerequisites 
-
 1. Install Anaconda from https://www.continuum.io/downloads (Python 3.x version).
 2. Create an environment 'aeolis' in the Anaconda Navigator.
 3. Open the Anaconda Prompt and run 'activate aeolis' to activate the enviroment.
@@ -94,6 +93,7 @@ Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Liv
   - pip install netcdf4
   - pip install bmi-python
   
+## Installation  
 5. The installation-method of AeoLiS depends on the desired AeoLiS-version
   - "Original" (Hoonhout, 2017) AeoLiS-version:
     In Anaconda Prompt run:
@@ -102,3 +102,21 @@ Weng, W. S., Hunt, J. C. R., Carruthers, D. J., Warren, A., Wiggs, G. F. S., Liv
     Download/clone the desired AeoLiS version and in Anaconda Prompt run:
     - python setup.py develop (for development)
     - python setup.py install (for static installation)
+    
+# Model Limitations and possible solutions
+
+Since the model is still in development (and will be for a long time) it has its limitations.
+These limitations can be divided into two categories" (for more information, see chapter 5-7 in http://resolver.tudelft.nl/uuid:83344d5b-f232-4085-985c-d1ec38903254):
+
+## "Academic/simplistic" dune development
+
+The current implementation of processes had the aim to make the model capable of simulating academic dune development (barchan, parabolic, embryo dunes). In order to validate the simulation results, results from CDM are used. The initial simulation results are reasonably well, but differ slightly from CDM and computations are significantly slower. Improvements to the current implementations should be consired:
+  - Advection equation
+  - Supply-limited sediment transport
+  - Grid resolution
+  - Computational speed
+  
+## "Realistic/complex" dune development
+
+
+
