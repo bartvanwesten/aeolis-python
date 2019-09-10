@@ -238,12 +238,14 @@ class AeoLiS(IBmi):
         
         # compute bed slopes
         self.s = aeolis.bed.slope(self.s, self.p)
+
+        if np.sum(self.s['uw']) != 0:
         
-        # calculate shear stresses over the combined bedlevel and separation bubble
-        self.s = aeolis.wind.shear(self.s, self.p)
-        
-#        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 2.)
-        self.s = aeolis.wind.separation(self.s, self.p)
+            # calculate shear stresses over the combined bedlevel and separation bubble
+            self.s = aeolis.wind.shear(self.s, self.p)
+
+    #        self.s = aeolis.wind.filter_low(self.s, self.p, 'dzsep', 'y', 2.)
+    #         self.s = aeolis.wind.separation(self.s, self.p)
         
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
@@ -286,16 +288,17 @@ class AeoLiS(IBmi):
 
         # update bed
         self.s = aeolis.bed.update(self.s, self.p)
-
-        # avalanching
-        self.s = aeolis.bed.avalanche(self.s, self.p)
         
         # calculate averages over time
-        self.s = aeolis.bed.time(self.s, self.p)
+        if self.t % self.p['dz_interval'] == 0 :
+            self.s = aeolis.bed.time(self.s, self.p)
         
         # grow vegetation
         self.s = aeolis.vegetation.germinate(self.s, self.p)
         self.s = aeolis.vegetation.grow(self.s, self.p)
+
+        # avalanching
+        self.s = aeolis.bed.avalanche(self.s, self.p)
 
         # increment time
         self.t += self.dt * self.p['accfac']

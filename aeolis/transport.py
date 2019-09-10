@@ -64,7 +64,6 @@ def grainspeed(s,p):
     
     g       = np.repeat(p['g'], nf, axis = 0)
     v       = np.repeat(p['v'], nf, axis = 0)
-#    alfa    = np.repeat(p['alfa'], nf, axis = 0)
     A       = np.repeat(A, nf, axis = 0)
     B       = np.repeat(B, nf, axis = 0)
     kappa   = np.repeat(p['karman'], nf, axis = 0)
@@ -72,18 +71,18 @@ def grainspeed(s,p):
     rhoa    = np.repeat(p['rhoa'], nf, axis = 0)
     
     srho    = rhop / rhoa
-    
-    uth     = np.zeros(d.shape)
-    uth     = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * g * d)
-    
+
+    uth = s['uth']
+    uth0 = s['uth0']
+
     # ustar (no vector) is defined in Parteli 2013 as the average shear velocity (True?) (Not spatially varying?)
     # For now it is assumed to be the shear velocity over a flat bed
     ustar0  = np.average(s['ustar0'])
     ustar0  = np.repeat(ustar0[np.newaxis], nf, axis = 0)
     
-    ustar   = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
-    ustars  = np.repeat(s['ustars'][:,:,np.newaxis], nf, axis = 0)
-    ustarn  = np.repeat(s['ustarn'][:,:,np.newaxis], nf, axis = 0)
+    ustar   = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 2)
+    ustars  = np.repeat(s['ustars'][:,:,np.newaxis], nf, axis = 2)
+    ustarn  = np.repeat(s['ustarn'][:,:,np.newaxis], nf, axis = 2)
 
     # Drag coefficient (Duran, 2007 -> Jimenez and Madsen, 2003)
     
@@ -97,28 +96,24 @@ def grainspeed(s,p):
 
     zm      = c * uth * tv  # characteristic height of the saltation layer +- 20 mm
     z0      = d/20. # grain based roughness layer +- 10 mu m
-    z1      = 35. * lv # reference height
+    z1      = 35. * lv # reference height +- 35 mm
     
     alfa    = 0.17 * d / lv
     p['alfa'] = alfa
-    
+
     Sstar   = d/(4*v)*np.sqrt(g*d*(srho-1.))
     Cd      = (4/3)*(A+np.sqrt(2*alfa)*B/Sstar)**2
     
     uf = np.sqrt(4/(3*Cd)*(srho-1)*g*d)
-    
-    # Efficient wind velocity
 
-    ueff = np.zeros(s['uth'].shape)
-
-    ueff = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(np.maximum(ustar/uth,1.)-1))
-    
-    ueff0 = (uth/kappa)*(np.log(z1/z0)+ z1/zm*(ustar0/uth-1))
     
     # Grain velocity
     
     ets = np.zeros(s['uth'].shape)
     etn = np.zeros(s['uth'].shape)
+    ueffs = np.zeros(s['uth'].shape)
+    ueffn = np.zeros(s['uth'].shape)
+    ueff = np.zeros(s['uth'].shape)
     
     dhs0 = np.zeros(s['uth'].shape)
     dhn0 = np.zeros(s['uth'].shape)
@@ -130,6 +125,22 @@ def grainspeed(s,p):
     
     dzs = np.zeros(s['zb'].shape)
     dzn = np.zeros(s['zb'].shape)
+
+    # Efficient wind velocity (Duran, 2006 - Partelli, 2013)
+
+    # Efficient wind velocity (Duran, PhD)
+    # ueffs = (uth0 / kappa) * (np.log(z1 / z0) + z1 / zm * ((ustars / uth0) - 1))
+    # ueffn = (uth0 / kappa) * (np.log(z1 / z0) + z1 / zm * ((ustarn / uth0) - 1))
+    # ueff = np.hypot(ueffs, ueffn)
+
+    ix = (ustar >= uth)
+    ueff[ix] = (uth0[ix] / kappa) * (np.log(z1 / z0) + 2*(np.sqrt(1+z1/zm[ix]*(ustar[ix]**2/uth[ix]**2-1))-1))
+
+    # ix = (ustar <= uth)
+    # ueffs[ix] = 0.
+    # ueffn[ix] = 0.
+    #
+    # ueff = np.hypot(ueffs, ueffn)
     
     #slopes
     
@@ -140,8 +151,8 @@ def grainspeed(s,p):
 #    ix = s['zsep'] > z
 #    z[ix] = s['zsep'][ix]
     
-    dzs[:,1:-1] = 0.5*(z[:,2:]-z[:,:-2])/(x[:,2:]-x[:,:-2])
-    dzn[1:-1,:] = 0.5*(z[:-2,:]-z[2:,:])/(y[:-2,:]-y[2:,:])
+    dzs[:,1:-1] = (z[:,2:]-z[:,:-2])/(x[:,2:]-x[:,:-2])
+    dzn[1:-1,:] = (z[:-2,:]-z[2:,:])/(y[:-2,:]-y[2:,:])
     
     # Boundaries
     dzs[:,0] = dzs[:,1]
@@ -149,56 +160,61 @@ def grainspeed(s,p):
     dzs[:,-1] = dzs[:,-2]
     dzn[-1,:] = dzn[-2,:]
     
-#    dhs   = np.repeat(dzs[:,:,np.newaxis], nf, axis = 0)/(2*np.sqrt(2))
-#    dhn   = np.repeat(dzn[:,:,np.newaxis], nf, axis = 0)/(2*np.sqrt(2))
-    
-    dhs   = np.repeat(dzs[:,:,np.newaxis], nf, axis = 0)
-    dhn   = np.repeat(dzn[:,:,np.newaxis], nf, axis = 0)
+    dhs   = np.repeat(dzs[:,:,np.newaxis], nf, axis = 2)
+    dhn   = np.repeat(dzn[:,:,np.newaxis], nf, axis = 2)
     
     # Wind direction
     
     ix = ustar != 0.
-    
+
     ets[ix] = ustars[ix] / ustar[ix]
     etn[ix] = ustarn[ix] / ustar[ix]
-    
-    ets0 = 1.
-    etn0 = 0.
-    
-    # Add
-    
-    dh0[:,:,:] = 0.
-    et0[:,:,:] = 1.
     
     Axs = ets + 2*alfa*dhs
     Axn = etn + 2*alfa*dhn
     Ax = np.hypot(Axs, Axn)
     
-    Ax0 = et0 + 2*alfa*dh0
-    
     # Compute grain speed
-    
-    ix = Ax != 0.
 
-    s['uus'][ix] = (ueff[ix]-uf/(np.sqrt(2*alfa)*Ax[ix]))*ets[ix]-(np.sqrt(2*alfa)*uf/Ax[ix])*dhs[ix]
-    s['uun'][ix] = (ueff[ix]-uf/(np.sqrt(2*alfa)*Ax[ix]))*etn[ix]-(np.sqrt(2*alfa)*uf/Ax[ix])*dhn[ix]
-    
-    s['uus'] = np.maximum(s['uus'] , 0.)
-    
-    s['uus0'] = (ueff0-uf/(np.sqrt(2*alfa)*Ax0))*ets0-(np.sqrt(2*alfa)*uf/Ax0)*dhs0
-    s['uun0'] = (ueff0-uf/(np.sqrt(2*alfa)*Ax0))*etn0-(np.sqrt(2*alfa)*uf/Ax0)*dhn0
-    
+    # for i in range(nf): #loop over fractions
+    #
+    #     s['uus'][ix] = (ueffs[ix]-uf/(np.sqrt(2*alfa)*Ax[ix]))*ets[ix]-(np.sqrt(2*alfa)*uf/Ax[ix])*dhs[ix]
+    #     s['uun'][ix] = (ueffn[ix]-uf/(np.sqrt(2*alfa)*Ax[ix]))*etn[ix]-(np.sqrt(2*alfa)*uf/Ax[ix])*dhn[ix]
+
+    # Flat bed TEMPORARY!
+
+    for i in range(nf): #loop over fractions
+
+        s['uu'][ix] = np.maximum((ueff[ix]-uf/(np.sqrt(2*alfa))), 0.)
+
+        s['uun'] = s['uu'] * etn
+        s['uus'] = s['uu'] * ets
+
+    # In separation bubble
+    ix = ustar == 0.
+
+    for i in range(nf):  # loop over fractions
+
+        s['uus'][ix] = 0.
+        s['uun'][ix] = 0.
+
+    # s['uus0'] = (ueff0-uf/(np.sqrt(2*alfa)*Ax0))*ets0-(np.sqrt(2*alfa)*uf/Ax0)*dhs0
+    # s['uun0'] = (ueff0-uf/(np.sqrt(2*alfa)*Ax0))*etn0-(np.sqrt(2*alfa)*uf/Ax0)*dhn0
+
+    # ix = s['zsepdelta'] < 0.9
+    # s['uus'][ix,0] = s['uus0'][ix,0]
+    # s['uun'][ix,0] = s['uun0'][ix,0]
+
     s['uu'] = np.hypot(s['uus'], s['uun'])
     s['uu0'] = np.hypot(s['uus0'], s['uun0'])
-    
-##    ix = s['zsepdelta'] < 0.9
-#    s['uus'][ix,0] *= 0.
-#    s['uun'][ix,0] *= 0.
-#    s['uus'][ix,0] *= 0.
-    
-    s['uus'][:,:,0] *= s['zsepdelta']
-    s['uun'][:,:,0] *= s['zsepdelta']
-    s['uu'][:,:,0] *= s['zsepdelta']
+
+    # print('----------------------------------------')
+    # print(s['ustar'][100,100]/s['uth'][100,100,0])
+    # print(s['uu'][100,100,0])
+
+        #s['uus'][:,:,0] *= s['zsepdelta']
+        #s['uun'][:,:,0] *= s['zsepdelta']
+        #s['uu'][:,:,0] *= s['zsepdelta']
 
     return s
 
@@ -222,35 +238,44 @@ def equilibrium(s, p):
     if p['process_transport']:
         
         nf = p['nfractions']
-        ustar = s['ustar'][:,:,np.newaxis].repeat(nf, axis=2)
-        ustar0 = s['ustar0'][:,:,np.newaxis].repeat(nf, axis=2)
+        ix = s['ustar'] != 0.
 
-        ix = ustar != 0.
-        
-        # equilibrium concentration
-        
-        s['Cu'] = np.zeros(ustar.shape)
-        
-        if p['method_transport'].lower() == 'bagnold':
-            s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (ustar[ix] - s['uth'][ix])**3 / s['uu'][ix])
-            s['Cu0'] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (ustar0 - s['uth0'])**3 / s['uu0'])
-        elif p['method_transport'].lower() == 'kawamura':
-            s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (ustar[ix] + s['uth'][ix])**2 * (ustar[ix] - s['uth'][ix]) / s['uu'][ix])
-        elif p['method_transport'].lower() == 'lettau':
-            s['Cu'][ix] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
-                                     * (ustar[ix] - s['uth'][ix]) * ustar[ix]**2 / s['uu'][ix])
-        elif p['method_transport'].lower() == 'cdm':
-            s['Cu'][ix] = np.maximum(0., p['alfa'] * p['rhoa'] / p['g'] \
-                                     * (ustar[ix]**2 - s['uth'][ix]**2))
-            s['Cu0'][ix] = np.maximum(0., p['alfa'] * p['rhoa'] / p['g'] \
-                                     * (ustar0[ix]**2 - s['uth0'][ix]**2))
-        else:
-            logger.log_and_raise('Unknown transport formulation [%s]' % p['method_transport'], exc=ValueError)
+        for i in range(nf):  # loop over fractions
+
+            # equilibrium concentration
+
+            s['Cu'] *= 0.
+
+            if p['method_transport'].lower() == 'bagnold':
+                s['Cu'][ix, i] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
+                                         * (s['ustar'][ix] - s['uth'][ix, i])**3 / s['uu'][ix, i])
+                s['Cu0'] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
+                                         * (s['ustar0'] - s['uth0'][:,:,i])**3 / s['uu0'][:,:,i])
+            elif p['method_transport'].lower() == 'kawamura':
+                s['Cu'][ix, i] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
+                                         * (s['ustar'][ix] + s['uth'][ix, i])**2 * (ustar[ix] - s['uth'][ix, i]) / s['uu'][ix, i])
+            elif p['method_transport'].lower() == 'lettau':
+                s['Cu'][ix, i] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
+                                         * (s['ustar'][ix] - s['uth'][ix, i]) * ustar[ix]**2 / s['uu'][ix, i])
+
+            elif p['method_transport'].lower() == 'cdm':
+
+                s['Cu'][ix, i] = np.maximum(0., p['alfa'][i] * p['rhoa'] / p['g'] * (s['ustar'][ix]**2 - s['uth'][ix, i]**2))
+
+                s['Cu0'][:,:,i] = np.maximum(0., p['alfa'][i] * p['rhoa'] / p['g'] * (s['ustar0']**2 - s['uth0'][:,:,i]**2))
+
+            else:
+                logger.log_and_raise('Unknown transport formulation [%s]' % p['method_transport'], exc=ValueError)
     
     s['Cu'] *= p['accfac']
+
+    # MAXIMUM CU
+
+    Cu_max = 1.5
+
+    s['Cu'] = np.minimum(Cu_max, s['Cu'])
+    #s['Cu'] *= 0.05 # TEMP!!!!!!!!
+
 
     return s
 
@@ -327,32 +352,38 @@ def saturation_time(s,p):
     
     nf      = p['nfractions']
     rgamma  = .2
+
+    uth = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'][0])
     
     tauth = p['rhoa']*s['uth0']**2
-    tau  = np.repeat(s['tau'][:,:,np.newaxis], nf, axis = 0)
-    tau0  = np.repeat(s['tau0'][:,:,np.newaxis], nf, axis = 0)
-    ustar  = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
+    tau  = np.repeat(s['tau0'][:,:,np.newaxis], nf, axis = 2)
+    ustar  = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 2)
 #    ustar0  = np.repeat(s['ustar0'][:,:,np.newaxis], nf, axis = 0)
     
-    zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 0)
+    zsepdelta = np.repeat(s['zsepdelta'][:,:,np.newaxis], nf, axis = 2)
     
     # Saturation time (Direct implementation from Duran 2007)
 
-    Ts = 2*s['uu']*p['alfa']/(p['g'])*np.maximum((tauth/((tau-tauth)*rgamma)),0.)
-    s['Ts'] = Ts[:,:,0]
+    Ts = 2*s['uu']*p['alfa']/(p['g']*rgamma)*(tauth/((tau - tauth)))
+    # Ts = 2 * s['uu'] * p['alfa'] / (p['g'] * rgamma) * (1 / ((ustar/uth)**2 - 1))
+    # Ts = 1 * (1 / ((ustar / uth) ** 2 - 1))
+    s['Ts'][:] = Ts[:, :, 0]
     
-    Ts_max = 2.
-    Ts_min = 0.05
+    Ts_max = 5.0
+    Ts_min = 0.001
+
+    # # Low grain speeds
+    # ix  = s['ustar'] <= uth
+    # s['Ts'][ix]  = Ts_max
     
-    uth = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'][0])
-    
-    # Low grain speeds
-    ix  = s['ustar'] <= uth
-    s['Ts'][ix]  = Ts_max
-    
-    jx = s['zsep'] > s['zb']
-    s['Ts'][jx] = 0.25
-    
-    s['Ts'] = np.maximum(np.minimum(s['Ts'],Ts_max),Ts_min)
+    # jx = s['zsep'] > s['zb']
+    # s['Ts'][jx] = 1. #Ts_max
+
+    # ix = (s['Ct'][:, :, 0] != 0.) * (s['Cu'][:, :, 0] != 0.)
+    # s['Ts'][ix] *= (s['Cu'][ix, 0] / s['Ct'][ix, 0])
+
+    s['Ts'] = np.maximum(np.minimum(s['Ts'], Ts_max), Ts_min)
+
+    s['Ts'][:] = p['T'] #* s['uu'][:, :, 0]
     
     return s

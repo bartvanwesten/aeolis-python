@@ -118,7 +118,10 @@ def compute_grainsize(s, p):
     '''
 
     s['uth'][:,:,:] = 1.
-    s['uth'][:,:,:] *= p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'])
+
+    # s['uth'][:,:,:] = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'] #AEOLIS
+    s['uth'][:, :, :] = 0.1 * np.sqrt( p['grain_size'] * p['g'] * (p['rhop'] / p['rhoa'] - 1)) # CDM
+
     
 #    s['uth0'][:,:,:] = 1.
     s['uth0'] = s['uth'].copy()
@@ -180,7 +183,7 @@ def compute_moisture(s, p):
     # should be .64 according to Delgado-Fernandez (10% vol.)
     ix = mg > 0.064
     
-    ustar = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
+    ustar = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 2)
     
     s['uth'][ix] = ustar[ix] #np.inf
     
@@ -347,26 +350,26 @@ def non_erodible(s, p): #NEW!
 #    # Define non-erodible layer
     
     nf     = p['nfractions']
-    ustar  = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 0)
+    ustar  = np.repeat(s['ustar'][:,:,np.newaxis], nf, axis = 2)
     
     s['zne'][:,:] = p['ne_file']
     
     # Hard method
-    
-#    ix = s['zb']<=s['zne']
-#    s['uth'][ix] = np.inf#ustar[ix]*2.
+
+    ix = s['zb']<=s['zne']
+    s['uth'][ix,:] = 10. # np.inf
     
     # Smooth method
 #    
 #    alfa = .05
 #    
-    nf = p['nfractions']
-    thuthlyr = -0.1
-    ix = s['zb']<=s['zne']+thuthlyr
-    
-    for i in range(nf):
-        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr)*(s['ustar'][ix]*2.0-s['uth'][ix,i]),s['uth'][ix,i])
-    
+#    nf = p['nfractions']
+#    thuthlyr = -0.1
+#    ix = s['zb']<=s['zne']+thuthlyr
+#    
+#    for i in range(nf):
+#        s['uth'][ix,i] += np.maximum((1-(s['zb'][ix]-s['zne'][ix])/thuthlyr)*(s['ustar'][ix]*2.0-s['uth'][ix,i]),s['uth'][ix,i])
+#    
     return s
 
 

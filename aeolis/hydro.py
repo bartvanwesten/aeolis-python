@@ -90,7 +90,6 @@ def interpolate(s, p, t):
             R = p['xi'] * s['Hs']
             s['zs'][ix] += R[ix] * (1. - np.minimum(1., h[ix] * p['gamma'] / s['Hs'][ix]))
         
-        # maximize wave height by depth ratio ``gamma``
         s['Hs'] = np.minimum(h * p['gamma'], s['Hs'])
         
     if p['process_meteo'] and  p['meteo_file'] is not None:
@@ -242,3 +241,12 @@ def saturation_pressure(T):
     vp = np.exp(A/TK + B + C*TK + D*TK**2 + E*TK**3 + F*np.log(TK)) # [kPa]
 
     return vp
+
+def swash_smooth(s, p):
+    
+    Tswash = p['Tswash'] / p['dt']
+    
+    ix = s['zs'] > s['zb'] + 0.05
+    s['zb'][ix] += (s['zb0'][ix]+0.1 - s['zb'][ix]) / Tswash
+    
+    return s

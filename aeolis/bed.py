@@ -216,6 +216,7 @@ def update(s, p):
     if p['process_bedupdate']:
         
         dz = dm[:,0].reshape((ny+1,nx+1)) / (p['rhop'] * (1. - p['porosity']))
+        s['dz'] = dz
         
         # redistribute sediment from inactive zone to marine interaction zone
         
@@ -449,7 +450,7 @@ def avalanche(s,p):
         tan_stat = np.tan(np.deg2rad(p['Mcr_stat']))
         tan_dyn = np.tan(np.deg2rad(p['Mcr_dyn']))
         
-        E = 0.4 # 0.9
+        E = 0.2
         
         grad_h_down = np.zeros((ny,nx,4))
         flux_down = np.zeros((ny,nx,4))

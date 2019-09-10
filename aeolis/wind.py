@@ -50,15 +50,15 @@ def initialize(s, p):
         if p['wind_convention'] == 'cartesian':
             pass
         elif p['wind_convention'] == 'nautical': #CHECK DIRECTIONS!
-            p['wind_file'][:,2] = 270.0 - p['wind_file'][:,2]
-#            p['wind_file'][:,2] = - p['wind_file'][:,2]
+            # p['wind_file'][:,2] = p['wind_file'][:,2]
+           p['wind_file'][:,2] = 180. - p['wind_file'][:,2]
         else:
             logger.log_and_raise('Unknown convention: %s' % p['wind_convention'], exc=ValueError)
 
     # initialize wind shear model
     if p['process_shear']:
         s['shear'] = aeolis.shear.WindShear(s['x'], s['y'], s['zb'], dx = p['dcomp'], dy = p['dcomp'],
-                                            L=100., l=10., z0=0.001,
+                                            L=100., l=10., d=p['grain_size'],
                                             buffer_width=10.)
         
     return s
@@ -101,11 +101,16 @@ def interpolate(s, p, t):
         s['udir'][:,:] = np.arctan2(interp_circular(t, uw_t, np.sin(uw_d)),
                                     interp_circular(t, uw_t, np.cos(uw_d))) * 180. / np.pi
 
-    s['uws'] = s['uw'] * np.cos(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
-    s['uwn'] = s['uw'] * np.sin(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
+    # s['uws'] = s['uw'] * np.cos(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
+    # s['uwn'] = s['uw'] * np.sin(s['udir'] / 180. * np.pi + (s['alfaz'] - 0.5 * np.pi) )
     
-    s['uwx'] = s['uw'] * np.cos(s['udir'] / 180. * np.pi)
-    s['uwy'] = s['uw'] * np.sin(s['udir'] / 180. * np.pi)
+    # s['uwx'] = s['uw'] * np.cos(s['udir'] / 180. * np.pi)
+    # s['uwy'] = s['uw'] * np.sin(s['udir'] / 180. * np.pi)
+
+    # LOOK AGAIN AT WIND DEFINITION IN MODEL!
+
+    s['uws'] = - s['uw'] * np.sin(s['udir'] / 180. * np.pi)
+    s['uwn'] = - s['uw'] * np.cos(s['udir'] / 180. * np.pi)
 
     if p['ny'] == 0:
         s['uwn'][:,:] = 0.
@@ -114,25 +119,18 @@ def interpolate(s, p, t):
 
     # compute saltation velocity
     z = p['z']
-    z0 = p['k'] #p['grain_size'][0]/20. #TEMP
+    z0 = 0.001 # See Duran, 2007 p.47 - p['grain_size'][0]/20. # p['k']
     
     # Determine shear velocity
     
     s['ustars'] = s['uws']*p['karman']/np.log(z/z0)
     s['ustarn'] = s['uwn']*p['karman']/np.log(z/z0)
-    
     s['ustar'] = np.hypot(s['ustars'],s['ustarn'])
+
+    s = velocity2stress(s, p)
+
     s['ustar0'] = s['ustar']
-    
-    # Determine shear stress
-    
-    s['tau'] = p['rhoa']*s['ustar']**2
     s['tau0'] = s['tau']
-    
-    ix = s['ustar'] != 0.
-    s['taus'][ix] = s['tau0'][ix]*s['ustars'][ix]/s['ustar'][ix]
-    s['taun'][ix] = s['tau0'][ix]*s['ustarn'][ix]/s['ustar'][ix]
-    
     s['taus0'] = s['taus'].copy()
     s['taun0'] = s['taun'].copy()
     
@@ -142,7 +140,7 @@ def shear(s,p):
     
     if 'shear' in s.keys() and p['process_shear']:
         
-        s['shear'].set_topo(s['zb'])
+        s['shear'].set_topo(s['zb'].copy())
         s['shear'].set_shear(s['taus'], s['taun'])
         
         s['shear'](u0=s['uw'][0,0],
@@ -152,52 +150,48 @@ def shear(s,p):
         s['taus'], s['taun'] = s['shear'].get_shear()
         
         # set boundaries
-        n = 1
-        s['taus'][:,:n] = s['taus0'][:,:n]
-        s['taus'][:,-n:] = s['taus0'][:,-n:]
-        s['taus'][:n,:] = s['taus0'][:n,:]
-        s['taus'][-n:,:] = s['taus0'][-n:,:]
-        
-        s['taun'][:,:n] = s['taun0'][:,:n]
-        s['taun'][:,-n:] = s['taun0'][:,-n:]
-        s['taun'][:n,:] = s['taun0'][:n,:]
-        s['taun'][-n:,:] = s['taun0'][-n:,:]
+        # n = 1
+        # s['taus'][:,:n] = s['taus0'][:,:n]
+        # s['taus'][:,-n:] = s['taus0'][:,-n:]
+        # s['taus'][:n,:] = s['taus0'][:n,:]
+        # s['taus'][-n:,:] = s['taus0'][-n:,:]
+        #
+        # s['taun'][:,:n] = s['taun0'][:,:n]
+        # s['taun'][:,-n:] = s['taun0'][:,-n:]
+        # s['taun'][:n,:] = s['taun0'][:n,:]
+        # s['taun'][-n:,:] = s['taun0'][-n:,:]
         
         # set minimum of taus to zero
         s['tau'] = np.hypot(s['taus'], s['taun'])
-        
-        ix = s['tau'] != 0.
-        
-        s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
-        s['ustars'][ix]  = s['ustar'][ix] *s['taus'][ix] /s['tau'][ix] 
-        s['ustarn'][ix]  = s['ustar'][ix] *s['taun'][ix] /s['tau'][ix] 
+
+        s = stress2velocity(s, p)
         
         if p['process_separation']:
-            s['zsep'] = s['shear'].get_separation()
-            s['dzsep'] = np.maximum(s['zsep'] - s['zb'], 0.)
+            s['dzsep'] = s['shear'].get_separation()
+            s['zsep'] = s['dzsep'] + s['zb']
 
     return s
 
-def separation(s,p):
-
-    m_tau_sepbub = .05
-    slope = np.tan(np.deg2rad(34.)) #Mcr_dyn
-    delta = 1./(slope*m_tau_sepbub)
-
-    s['zsepdelta'] = np.minimum(np.maximum(1. - delta * s['dzsep'], 0.),1.)
-    
-    s['taus'] *= s['zsepdelta']
-    s['taun'] *= s['zsepdelta']
-    
-    s['tau'] = np.hypot(s['taus'], s['taun'])
-    
-    ix = s['tau'] != 0.
-        
-    s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
-    s['ustars'][ix]  = s['ustar'][ix] *s['taus'][ix] /s['tau'][ix] 
-    s['ustarn'][ix]  = s['ustar'][ix] *s['taun'][ix] /s['tau'][ix] 
-    
-    return s
+# def separation(s,p):
+#
+#     m_tau_sepbub = .05
+#     slope = np.tan(np.deg2rad(34.)) #Mcr_dyn
+#     delta = 1./(slope*m_tau_sepbub)
+#
+#     s['zsepdelta'] = np.minimum(np.maximum(1. - delta * s['dzsep'], 0.),1.)
+#
+#     s['taus_nosep'] = s['taus'].copy()
+#     s['taun_nosep'] = s['taun'].copy()
+#     s['tau_nosep'] = s['tau'].copy()
+#
+#     s['taus'] *= s['zsepdelta']
+#     s['taun'] *= s['zsepdelta']
+#
+#     s['tau'] = np.hypot(s['taus'], s['taun'])
+#
+#     s = stress2velocity(s, p)
+#
+#     return s
 
 def get_velocity_at_height(u, z, z0, z1=None):
     '''Compute shear velocity from wind velocity following Prandl-Karman's Law of the Wall
@@ -227,6 +221,39 @@ def get_velocity_at_height(u, z, z0, z1=None):
         return tau
     else:
         return tau * np.log(z1 / z0) / .41
+
+
+def stress2velocity(s, p):
+
+    s['ustar'] = np.sqrt(s['tau'] / p['rhoa'])
+
+    ix = s['tau'] > 0.
+    s['ustars'][ix] = s['ustar'][ix] * s['taus'][ix] / s['tau'][ix]
+    s['ustarn'][ix] = s['ustar'][ix] * s['taun'][ix] / s['tau'][ix]
+
+    ix = s['tau'] == 0.
+    s['ustar'][ix] = 0.
+    s['ustars'][ix] = 0.
+    s['ustarn'][ix] = 0.
+
+    return s
+
+
+def velocity2stress(s, p):
+
+    s['tau'] = p['rhoa'] * s['ustar'] ** 2
+
+    ix = s['ustar'] > 0.
+    s['taus'][ix] = s['tau'][ix]*s['ustars'][ix]/s['ustar'][ix]
+    s['taun'][ix] = s['tau'][ix]*s['ustarn'][ix]/s['ustar'][ix]
+    s['tau'] = np.hypot(s['taus'], s['taun'])
+
+    ix = s['ustar'] == 0.
+    s['taus'][ix] = 0.
+    s['taun'][ix] = 0.
+    s['tau'][ix] = 0.
+
+    return s
     
 def filter_low(s, p, par, direction, Cut):
     

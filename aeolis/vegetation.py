@@ -35,10 +35,15 @@ import aeolis.wind
 # initialize logger
 logger = logging.getLogger(__name__)
 
-def initialize (s,p):  
-    
-    s['rhoveg'][:,:] = 0.
-    s['germinate'][:,:] = 0.
+def initialize (s,p):
+
+    s['rhoveg'][:, :] = p['veg_file']
+
+    ix = s['rhoveg'] < 0.03
+    s['rhoveg'][ix] *= 0.
+    s['hveg'][:, :] = p['hveg_max']*np.sqrt(s['rhoveg'])
+
+    s['germinate'][:,:] = (s['rhoveg']>0)
     s['lateral'][:,:] = 0.
 
     return s
@@ -90,41 +95,42 @@ def germinate (s,p):
 def grow (s, p):
     
     ix = np.logical_or(s['germinate'] != 0., s['lateral'] != 0.) * ( p['V_ver'] > 0.)
-    
+
     V_ver = p['V_ver']/(365.25*24*3600) #[m/s]
     gamma = p['veg_gamma']
 
     s['drhoveg'][:,:] *= 0.
 
     # Reduction of vegetation growth due to sediment burial
-    dz = s['dzyear_avg']/(365.25*24*3600)   #[m/s]
-    
+    dz = s['dzyear_avg']/(365.25*24*3600) #[m/s]
+
     # Competation of growth
-    
+
     s['dhveg'][ix] = V_ver * (1 - s['hveg'][ix]/p['hveg_max']) - np.abs(dz[ix])*gamma
-    
+
     # Adding growth
-    
+
     s['hveg'] += s['dhveg']*p['dt']
-    
+
     # Compute the density
-    
+
     s['hveg'] = np.maximum(np.minimum(s['hveg'], p['hveg_max']), 0.)
     s['rhoveg'] = (s['hveg']/p['hveg_max'])**2
-    
-    jx = np.logical_and(s['lateral'] != 0.,s['rhoveg'] < 0.02)
-    s['rhoveg'][jx] += 0.4*s['dxrhoveg'][jx]*0.5
-    
+
+    # jx = np.logical_and(s['lateral'] != 0.,s['rhoveg'] < 0.02)
+    # s['rhoveg'][jx] += 0.4*s['dxrhoveg'][jx]*0.5
+
     # Plot has to vegetate again after dying
-    
+
     s['germinate'] *= (s['rhoveg']!=0.)
     s['lateral'] *= (s['rhoveg']!=0.)
-    
+
     # Dying of vegetation due to hydrodynamics (Dynamic Vegetation Limit)
-    
-    s['rhoveg'] *= (s['zb']+0.1 >= s['zs'])
-    s['germinate'] *= (s['zb']+0.1 >=s ['zs'])
-    s['lateral'] *= (s['zb']+0.1 >=s ['zs'])
+
+    s['rhoveg'] *= (s['zb']+0.01 >= s['zs'])
+    s['hveg'] *= (s['zb'] + 0.01 >= s['zs'])
+    s['germinate'] *= (s['zb']+0.01 >=s['zs'])
+    s['lateral'] *= (s['zb']+0.01 >=s['zs'])
     
     return s
 
@@ -133,21 +139,32 @@ def vegshear(s, p):
     # Raupach, 1993
     
     roughness = 16.
+    nf = p['nfractions']
     
-    s['vegfac']= 1./(1. + roughness*s['rhoveg'])
-
     ets = np.zeros(s['zb'].shape)
     etn = np.zeros(s['zb'].shape)
     ets[:,:] = 1.
-
+    
     ix = s['ustar'] != 0.
     ets[ix] = s['ustars'][ix]/s['ustar'][ix]
     etn[ix] = s['ustarn'][ix]/s['ustar'][ix]
     
-    s['ustar'] *= s['vegfac']
+    s['vegfac']= 1./(1. + roughness*s['rhoveg'])
     
-    s['ustars'] = ets * s['ustar']
-    s['ustarn'] = etn * s['ustar']
+    s['tau'] *= s['vegfac']
 
+    s['taus'] = ets * s['tau']
+    s['taun'] = etn * s['tau']
+
+    s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
+    s['ustars']  = s['ustar'] * ets
+    s['ustarn']  = s['ustar'] * etn
+    
+    # vegfac = np.repeat(s['vegfac'][:,:,np.newaxis], nf, axis = 0)
+    # tauth = p['rhoa']*s['uth']**2
+    # tauth /= vegfac
+    #
+    # s['uth'] = np.sqrt(tauth/p['rhoa'])
+    
     
     return s

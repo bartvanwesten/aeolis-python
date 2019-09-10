@@ -37,6 +37,9 @@ INITIAL_STATE = {
         'tauzb',                              # [m/s] Wind shear velocity
         'tauszb',                             # [m/s] Component of wind shear velocity in x-direction
         'taunzb',                             # [m/s] Component of wind shear velocity in y-direction
+        'tau_nosep',                              # [m/s] Wind shear velocity
+        'taus_nosep',                             # [m/s] Component of wind shear velocity in x-direction
+        'taun_nosep',                             # [m/s] Component of wind shear velocity in y-direction
         'dtaus',                            # [-] Component of the wind shear perturbation in x-direction
         'dtaun',                            # [-] Component of the wind shear perturbation in y-direction
         'dtauszb',                            # [-] Component of the wind shear perturbation in x-direction
@@ -197,10 +200,10 @@ DEFAULT_CONFIG = {
     'process_separation'  : True,               # NEW! Enable the separation bubble
     'th_grainsize'        : True,               # Enable wind velocity threshold based on grainsize
     'th_bedslope'         : False,              # Enable wind velocity threshold based on bedslope
-    'th_moisture'         : True,               # Enable wind velocity threshold based on moisture
+    'th_moisture'         : False,               # Enable wind velocity threshold based on moisture
     'th_humidity'         : False,              # Enable wind velocity threshold based on humidity
     'th_salt'             : False,              # Enable wind velocity threshold based on salt
-    'th_roughness'        : True,               # Enable wind velocity threshold based on roughness
+    'th_roughness'        : False,               # Enable wind velocity threshold based on roughness
     'xgrid_file'          : None,               # Filename of ASCII file with x-coordinates of grid cells
     'ygrid_file'          : None,               # Filename of ASCII file with y-coordinates of grid cells
     'bed_file'            : None,               # Filename of ASCII file with bed level heights of grid cells
@@ -211,6 +214,7 @@ DEFAULT_CONFIG = {
     'bedcomp_file'        : None,               # Filename of ASCII file with initial bed composition
     'threshold_file'      : None,               # Filename of ASCII file with shear velocity threshold
     'ne_file'             : None,               # NEW! Filename of ASCII file with non-erodible layer
+    'veg_file'            : None,               # NEW! Filename of ASCII file with initial vegetation density
     'wave_mask'           : None,               # Filename of ASCII file with mask for wave height
     'tide_mask'           : None,               # Filename of ASCII file with mask for tidal elevation
     'threshold_mask'      : None,               # Filename of ASCII file with mask for the shear velocity threshold
@@ -290,7 +294,7 @@ DEFAULT_CONFIG = {
     'dz_opt'              : 0.,                # NEW! [m/year]
     'dz_tol'              : 0.05,                 # NEW! [m/year]
     'dcomp'               : 1.,
-    'veg_gamma'           : 0.1
+    'veg_gamma'           : 1.
 }
 
 

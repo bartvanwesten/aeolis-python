@@ -28,6 +28,7 @@ import logging
 import numpy as np
 import scipy.special
 import scipy.interpolate
+import matplotlib.pyplot as plt
 
 
 # initialize logger
@@ -82,7 +83,7 @@ class WindShear:
     
     def __init__(self, x, y, z, dx=.5, dy=.5,
                  buffer_width=100., buffer_relaxation=None,
-                 L=100., z0=.01, l=10.):
+                 L=100., d=0.025, l=10.):
         '''Class initialization
             
         Parameters
@@ -124,6 +125,10 @@ class WindShear:
         self.igrid = dict(x = x,
                           y = y,
                           z = z)
+
+        self.irgrid = dict(x = x,
+                           y = y,
+                           z = z)
             
         self.cgrid = dict(dx = dx,
                           dy = dy)
@@ -132,7 +137,7 @@ class WindShear:
         self.buffer_relaxation = buffer_relaxation
                           
         self.L = L
-        self.z0 = z0
+        self.z0 = d[0]/20. # z0 # ADJUST THIS TO MULTIPLE FACTIONS!
         self.l = l
                           
         self.set_computational_grid()
@@ -151,22 +156,21 @@ class WindShear:
         '''
         u1 = np.zeros(u0.shape)
         
-        ix = u0 != 0.
+        ix = u0 > 0.
         u1[ix] = u0[ix]/u0[ix] * 0.76 #why??
-        
+
+        udir = 90 + udir
+
         # Populate computational-grid with topography
-        self.populate_computational_grid(-udir)
-        
+        self.populate_computational_grid(udir)
+
         # Compute separation bubble
         if process_separation:
-            
             zsep = self.separation()
-        
-            ix = zsep >= self.cgrid['z']
-            self.cgrid['z'][ix] = zsep[ix]
+            z_origin = self.cgrid['z'].copy()
+            self.cgrid['z'] = np.maximum(self.cgrid['z'], zsep)
         
         # Compute shear stresses on computational grid
-        
         self.compute_shear(u1)
                     
         gc = self.cgrid
@@ -174,33 +178,41 @@ class WindShear:
         
         gc['dtaux'] = np.maximum(gc['dtaux'],-1.)
         
-        gc['taux'], gc['tauy'] = self.rotate(gc['taux'], gc['tauy'], udir)
-        
-        # Add shear
-        self.add_shear() 
+        # gc['taux'], gc['tauy'] = self.rotate(gc['taux'], gc['tauy'], udir)
+
+        # Add shear and multiply shear with separation
+        self.add_shear()
+
+        if process_separation:
+            self.cgrid['dzsep'] = self.cgrid['z'] - z_origin
+            self.separation_shear(self.cgrid['dzsep'])
         
         # Rotation
+        gi['x'], gi['y'] =          self.rotate(gi['x'],    gi['y'],    -udir, origin=(self.x0, self.y0))
+        gc['x'], gc['y'] =          self.rotate(gc['x'],    gc['y'],    -udir, origin=(self.x0, self.y0))
+        gc['taux'], gc['tauy'] =    self.rotate(gc['taux'], gc['tauy'], -udir)
+
+        # Interpolate real grid with shear stresses and separation bubble
+        self.igrid['taux'] = self.interpolate(gc['x'], gc['y'], gc['taux'], gi['x'], gi['y'])
+        self.igrid['tauy'] = self.interpolate(gc['x'], gc['y'], gc['tauy'], gi['x'], gi['y'])
+        self.igrid['dzsep'] = self.interpolate(gc['x'], gc['y'], gc['dzsep'], gi['x'], gi['y'])
+
+        # Filled rotational grid, now rotate it back to original direction
+
+        gi['taux'], gi['tauy'] = self.rotate(gi['taux'], gi['tauy'], udir)
+        gi['x'], gi['y'] = self.rotate(gi['x'], gi['y'], udir, origin=(self.x0, self.y0))
+
+        # PLOTTING! -------------------------------------------------------
+        # d = 10
+        # plt.pcolormesh(gi['x'], gi['y'], gi['dzsep'])
+        # plt.quiver(gi['x'][::d, ::d], gi['y'][::d, ::d],
+        #           gi['taux'][::d, ::d], gi['tauy'][::d, ::d])
+        # plt.colorbar()
+        # plt.show()
+        # -------------------------------------------------
 
         gc['x'], gc['y'] = self.rotate(gc['x'], gc['y'], udir, origin=(self.x0, self.y0))
-        gi['x'], gi['y'] = self.rotate(gi['x'], gi['y'], udir, origin=(self.x0, self.y0))
-        
-        gc['taux'], gc['tauy'] = self.rotate(gc['taux'], gc['tauy'], -udir)
 
-        # Interpolate real grid with shear stresses
-        self.igrid['taux'] = self.interpolate(gc['x'], gc['y'], gc['taux'],
-                                               gi['x'], gi['y'])
-        self.igrid['tauy'] = self.interpolate(gc['x'], gc['y'], gc['tauy'],
-                                               gi['x'], gi['y'])
-        
-        if process_separation:
-            self.igrid['zsep']  = self.interpolate(gc['x'], gc['y'], zsep,
-                                                   gi['x'], gi['y'])
-        
-            self.igrid['zsep'][:,-5:] = 0.
-        
-        gi['x'], gi['y'] = self.rotate(gi['x'], gi['y'], -udir, origin=(self.x0, self.y0))
-        gc['x'], gc['y'] = self.rotate(gc['x'], gc['y'], -udir, origin=(self.x0, self.y0))
-        
         return self
 
 
@@ -233,7 +245,7 @@ class WindShear:
         
         '''
 
-        zsep = self.igrid['zsep']
+        zsep = self.igrid['dzsep']
             
         return zsep
     
@@ -275,7 +287,7 @@ class WindShear:
         '''
 
         tau = np.sqrt(self.cgrid['taux']**2 + self.cgrid['tauy']**2)
-        ix = tau != 0.
+        ix = tau > 0.
 
         dtaux = self.cgrid['dtaux']
         dtauy = self.cgrid['dtauy']
@@ -333,49 +345,57 @@ class WindShear:
         gi = self.igrid
         
         # Add buffer zone around grid
-        
+
         dxi = gi['x'][1,1]-gi['x'][0,0]
         dyi = gi['y'][1,1]-gi['y'][0,0]
-        
-        buf = 100 # amount of cells
-      
-        xi, yi = np.meshgrid(np.linspace(gi['x'][0,0]-buf*dxi,gi['x'][-1,-1]+buf*dxi,gi['x'].shape[1]+2*buf), 
-                             np.linspace(gi['y'][0,0]-buf*dyi,gi['y'][-1,-1]+buf*dyi,gi['y'].shape[0]+2*buf))
-        
+
+        buf = 200 # amount of cells
+
+        xi, yi = np.meshgrid(np.linspace(gi['x'][0,0]-buf*dxi,gi['x'][-1,-1]+buf*dxi,gi['x'].shape[1]+2*buf),
+                            np.linspace(gi['y'][0,0]-buf*dyi,gi['y'][-1,-1]+buf*dyi,gi['y'].shape[0]+2*buf))
+
         zi = np.zeros((xi.shape))
+
         zi[buf:-buf,buf:-buf] = gi['z']
-        
+
         # Filling bufferzone (edges)
-        
+
         zi[buf:-buf,:buf] = np.repeat(zi[buf:-buf,buf+1][:,np.newaxis], buf, axis = 1)
         zi[buf:-buf,-buf:] = np.repeat(zi[buf:-buf,-buf-1][:,np.newaxis], buf, axis = 1)
-        
+
         zi[:buf,buf:-buf] = np.repeat(zi[buf+1,buf:-buf][np.newaxis], buf, axis = 0)
         zi[-buf:,buf:-buf] = np.repeat(zi[-buf-1,buf:-buf][np.newaxis], buf, axis = 0)
-        
+
         # Filling bufferzone (corners)
-        
+
         zi[:buf,:buf] = zi[buf+1,buf+1]
         zi[-buf:,:buf] = zi[-buf-1,buf+1]
         zi[:buf,-buf:] = zi[buf+1,-buf-1]
         zi[-buf:,-buf:] = zi[-buf-1,-buf-1]
-        
-        # Filling bufferzone (corners)
-        
+
+        # Rotate computational
+
         xc, yc = self.rotate(gc['xi'], gc['yi'], alpha, origin=(self.x0, self.y0))
-        
-#        zc = self.interpolate(gi['x'], gi['y'], gi['z'], xc, yc)
         zc = self.interpolate(xi, yi, zi, xc, yc)
+
         tauxc = self.interpolate(gi['x'], gi['y'], gi['taux'], xc, yc)
         tauyc = self.interpolate(gi['x'], gi['y'], gi['tauy'], xc, yc)
-        
+
         self.cgrid['z'] = zc
         self.cgrid['taux'] = tauxc
         self.cgrid['tauy'] = tauyc
         self.cgrid['x'] = xc
         self.cgrid['y'] = yc
         
-    def compute_shear(self, u0, nfilter=(1,2)):
+        # NO INTERPOLATION
+        #
+        # self.cgrid['z'] = gi['z']
+        # self.cgrid['taux'] = gi['taux']
+        # self.cgrid['tauy'] = gi['tauy']
+        # self.cgrid['x'] = gi['x']
+        # self.cgrid['y'] = gi['y']
+        
+    def compute_shear(self, u0):
         '''Compute wind shear perturbation for given free-flow wind speed on computational grid
         
         Parameters
@@ -400,12 +420,11 @@ class WindShear:
         ny, nx = g['z'].shape
         kx, ky = np.meshgrid(2. * np.pi * np.fft.fftfreq(nx+1, g['dx'])[1:],
                              2. * np.pi * np.fft.fftfreq(ny+1, g['dy'])[1:])
-
         
         hs = np.fft.fft2(g['z'])
         
         # Filter
-        hs = self.filter_highfrequenies(kx, ky, hs, nfilter, 0.01)
+        hs = self.filter_highfrequenies(kx, ky, hs, (1.5, 6), 0.01)
 
         # 1. Auxiliary variables
         #-----------------------
@@ -414,13 +433,13 @@ class WindShear:
         
         # 1.2 Inner layer height
         l = 1.0
-        for i in range(2):
+        for i in range(5):
             l_aux = 2. * kappa**2 * L / np.log(l/self.z0)
             l = l_aux
         
         # 1.3 Middle layer height
         hm = 1.0
-        for i in range(2):
+        for i in range(5):
             hm_aux = L / np.sqrt(np.log(hm/self.z0))
             hm = hm_aux
         
@@ -451,25 +470,33 @@ class WindShear:
         buffer width.
 
         '''
-            
-        g = self.igrid
+
+        gi = self.igrid
                 
         # grid center
-        x0, y0 = np.mean(g['x']), np.mean(g['y'])
-                    
+        x0, y0 = np.mean(gi['x']), np.mean(gi['y'])
+
         # grid size
-        self.D = np.sqrt((g['x'].max() - g['x'].min())**2 +
-                         (g['y'].max() - g['y'].min())**2) + 2 * self.buffer_width
-                        
+        self.D = np.sqrt((gi['x'].max() - gi['x'].min())**2 +
+                        (gi['y'].max() - gi['y'].min())**2) + 2 * self.buffer_width
+
         # determine equidistant, square grid
         xc, yc = self.get_exact_grid(x0 - self.D/2., x0 + self.D/2.,
-                                     y0 - self.D/2., y0 + self.D/2.,
-                                     self.cgrid['dx'], self.cgrid['dy'])
-        
+                                    y0 - self.D/2., y0 + self.D/2.,
+                                    self.cgrid['dx'], self.cgrid['dy'])
+
         self.x0 = x0
         self.y0 = y0
         self.cgrid['xi'] = xc
         self.cgrid['yi'] = yc
+        
+        # NO INTERPOLATION
+        
+        # self.x0 = x0
+        # self.y0 = y0
+        # self.cgrid['xi'] = g['x']
+        # self.cgrid['yi'] = g['y']
+        
         
     def get_sigmoid(self, x):
         '''Get sigmoid function value
@@ -700,6 +727,7 @@ class WindShear:
     
         dzx  = np.zeros(g['z'].shape)
         dzy  = np.zeros(g['z'].shape)
+        dz = np.zeros(g['z'].shape)
         stall = np.zeros(g['z'].shape)
         bubble = np.zeros(g['z'].shape)
         zsep = np.zeros(g['z'].shape) # total separation bubble
@@ -710,34 +738,31 @@ class WindShear:
         
 #        zmin = np.zeros(ny)
         
-        slope = 0.25 #np.deg2rad(11.) #p['M_dSlope']
+        slope = 0.2 #np.deg2rad(11.) #p['M_dSlope'] #0.25
         
 #        zfft = np.zeros(g['z'].shape, dtype=np.complex)
         k = np.array(range(0,nx))
 
         # Compute angle of separation
-#        
-#        dz[:,:-1] = np.rad2deg(np.arctan((z[:,1:]-z[:,:-1])/g['dx']))
-#        dz[:,-1] = dz[:,-2]
-        
-        dzx[:,1:] = (z[:,1:]-z[:,:-1])/(x[:,1:]-x[:,:-1])
-        dzy[1:-1,:] = (z[2:,:]-z[:-2,:])/(y[2:,:]-y[:-2,:])
-        
-        # Boundaries
-        dzx[:,0] = dzx[:,1]
-        dzy[0,:] = dzy[1,:]    
-        dzx[:,-1] = dzx[:,-2]
-        dzy[-1,:] = dzy[-2,:]
-        
-        dz = np.hypot(dzx,dzy)
+        dx = g['dx']
+#
+        dz[:,:-1] = np.rad2deg(np.arctan((z[:,1:]-z[:,:-1])/dx))
+        dz[:,-1] = dz[:,-2]
+
+        # dz = np.hypot(dzx,dzy)
         
         # Determine location of separation bubbles
-        stall += np.logical_and(dzx < 0, np.rad2deg(np.arctan(dz)) > 30.) #p['M_sep']
+        # stall += np.logical_and(dzx < 0, np.rad2deg(np.arctan(dz)) > 30.) #p['M_sep'] # 30
+
+        stall += np.logical_and(abs(dz) > 20., dz < 0) # p['M_sep'] # 30
         
         stall[1:-1,:] += np.logical_and(stall[1:-1,:]==0, stall[:-2,:]>0, stall[2:,:]>0)
         stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0) 
         
         bubble[:,:-1] = np.logical_and(stall[:,:-1] == 0, stall[:,1:] > 0) # define bubble
+
+
+
         
         # Shift bubble n cells back
         n = 2
@@ -745,6 +770,8 @@ class WindShear:
         bubble[:,:n] = 0
         
         bubble = bubble.astype(int)
+
+
         
         # Count separation bubbles
         
@@ -757,44 +784,63 @@ class WindShear:
             
             i = bubble_n[k,1]
             j = bubble_n[k,0]
-            
+
+            ix_neg = (dz[j, i:] >= 0)
+
+            if np.sum(ix_neg) == 0:
+                hb = z[j,i]
+            else:
+                hb = z[j,i] - z[j,i+np.where(ix_neg)[0][0]]
+
+                # print('-----------------')
+                # print(g['x'][j,i])
+                # print(g['y'][j, i])
+                # print(z[j,i])
+                #
+                # plt.pcolormesh(g['x'], g['y'], dz)
+                # plt.colorbar()
+                # plt.show()
+
             # Walk through all separation bubbles and determine polynoms
         
-            dzdx0 = (z[j,i]-z[j,i-2])/(2*g['dx'])
+            dzdx0 = (z[j,i]-z[j,i-2])/(2*dx)
         
             a = dzdx0 / slope
-            l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
+            # l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
+            l = np.minimum(np.maximum((1.5 * hb / slope) * (1 + a * 0.25 + 0.125 * a ** 2), .1), 200.)
             
-            a2 = -3 * z[j,i]/l**2 - 2 * dzdx0 / l
-            a3 =  2 * z[j,i]/l**3 +     dzdx0 / l**2
+            a2 = -3 * hb/l**2 - 2 * dzdx0 / l
+            a3 =  2 * hb/l**3 +     dzdx0 / l**2
           
-            i_max = min(i+int(l/g['dx']),int(nx-1))
-            xs = x[j,i:i_max] - x[j,i]
+            i_max = min(i+int(l/dx),int(nx-1))
+            # xs = x[j,i:i_max] - x[j,i]
+            xs = np.arange(0, (i_max - i)*dx, dx)
+
             
             zsep0[j,i:i_max] = ((a3 * xs + a2) * xs + dzdx0) * xs + z[j,i]
             
             # First order Filter
-            
-            Cut = 1.5
-            dk = 2.0 * np.pi / (np.max(g['x']))
-            zfft[j,:] = np.fft.fft(zsep0[j,:])
-            zfft[j,:] *= np.exp(-(dk*k*g['dx'])**2./(2.*Cut**2.))
-            zsep0[j,:] = np.real(np.fft.ifft(zfft[j,:]))
-            
-            # First order
-            
-            dzdx1 = (zsep0[j,i+1]-zsep0[j,i])/(g['dx'])
-            
-            a = dzdx1 / slope
-            l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
-            
-            a2 = -3 * z[j,i]/l**2 - 2 * dzdx1 / l
-            a3 =  2 * z[j,i]/l**3 +     dzdx1 / l**2
-          
-            i_max = min(i+int(l/g['dx']),int(nx-1))
-            xs = x[j,i:i_max] - x[j,i]
-            
-            zsep1[j,i:i_max] = ((a3 * xs + a2) * xs + dzdx1) * xs + z[j,i]
+#            
+#            Cut = 1.5
+#            dk = 2.0 * np.pi / (np.max(g['x']))
+#            zfft[j,:] = np.fft.fft(zsep0[j,:])
+#            zfft[j,:] *= np.exp(-(dk*k*g['dx'])**2./(2.*Cut**2.))
+#            zsep0[j,:] = np.real(np.fft.ifft(zfft[j,:]))
+#            
+#            # First order
+#            
+#            dzdx1 = (zsep0[j,i+1]-zsep0[j,i])/(g['dx'])
+#            
+#            a = dzdx1 / slope
+#            l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
+#            
+#            a2 = -3 * z[j,i]/l**2 - 2 * dzdx1 / l
+#            a3 =  2 * z[j,i]/l**3 +     dzdx1 / l**2
+#          
+#            i_max = min(i+int(l/g['dx']),int(nx-1))
+#            xs = x[j,i:i_max] - x[j,i]
+#            
+#            zsep1[j,i:i_max] = ((a3 * xs + a2) * xs + dzdx1) * xs + z[j,i]
             
             # Separation bubble cuts dune profile
             
@@ -817,14 +863,21 @@ class WindShear:
 #                zsep1[j,i:i_max] = ((a3_cut*xs + a2_cut) * xs + dzdx0[j,i])*xs + z[j,i]
 #                zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep1[j,i:i_max])
 #            else:
-            zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep1[j,i:i_max])
+            zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep0[j,i:i_max]) # zsep1
+
+        # plt.pcolormesh(g['x'], g['y'], zsep)
+        # plt.colorbar()
+        # plt.show()
+        #
+        # plt.plot(x[150,:], zsep[150,:])
+        # plt.show()
 
         return zsep
     
     def separation_shear(self, dzsep):
         
         m_tau_sepbub = .05
-        slope = np.tan(np.deg2rad(34.)) #Mcr_dyn
+        slope = 0.2 #np.tan(np.deg2rad(34.)) #Mcr_dyn
         delta = 1./(slope*m_tau_sepbub)
         
         zsepdelta = np.minimum(np.maximum(1. - delta * dzsep, 0.),1.)
