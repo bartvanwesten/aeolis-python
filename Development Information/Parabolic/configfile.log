@@ -1,0 +1,234 @@
+2019-02-19 17:20:15,532 aeolis.model INFO     **********************************************************
+2019-02-19 17:20:15,532 aeolis.model INFO                                                               
+2019-02-19 17:20:15,532 aeolis.model INFO              d8888                   888      d8b  .d8888b.   
+2019-02-19 17:20:15,532 aeolis.model INFO             d88888                   888      Y8P d88P  Y88b  
+2019-02-19 17:20:15,532 aeolis.model INFO            d88P888                   888          Y88b.       
+2019-02-19 17:20:15,532 aeolis.model INFO           d88P 888  .d88b.   .d88b.  888      888  "Y888b.    
+2019-02-19 17:20:15,532 aeolis.model INFO          d88P  888 d8P  Y8b d88""88b 888      888     "Y88b.  
+2019-02-19 17:20:15,532 aeolis.model INFO         d88P   888 88888888 888  888 888      888       "888  
+2019-02-19 17:20:15,532 aeolis.model INFO        d8888888888 Y8b.     Y88..88P 888      888 Y88b  d88P  
+2019-02-19 17:20:15,532 aeolis.model INFO       d88P     888  "Y8888   "Y88P"  88888888 888  "Y8888P"   
+2019-02-19 17:20:15,532 aeolis.model INFO                                                               
+2019-02-19 17:20:15,532 aeolis.model INFO       Version:  1.1.5                                        
+2019-02-19 17:20:15,532 aeolis.model INFO       Git hash: 2354bf7137760f4a96c2ae45c70856c8a56e0d4b     
+2019-02-19 17:20:15,532 aeolis.model INFO                                                               
+2019-02-19 17:20:15,548 aeolis.model INFO     **********************************************************
+2019-02-19 17:20:15,549 aeolis.model INFO     PARAMETER SETTINGS                                        
+2019-02-19 17:20:15,549 aeolis.model INFO     **********************************************************
+2019-02-19 17:20:15,549 aeolis.model INFO                         A = 0.085000
+2019-02-19 17:20:15,549 aeolis.model INFO                       CFL = 1.00
+2019-02-19 17:20:15,549 aeolis.model INFO                        Cb = 1.50
+2019-02-19 17:20:15,549 aeolis.model INFO                  M_dSlope = 11.00
+2019-02-19 17:20:15,549 aeolis.model INFO                     M_sep = 30.00
+2019-02-19 17:20:15,549 aeolis.model INFO                   Mcr_dyn = 33.00
+2019-02-19 17:20:15,549 aeolis.model INFO                  Mcr_stat = 34.00
+2019-02-19 17:20:15,549 aeolis.model INFO                         T = 2.00
+2019-02-19 17:20:15,549 aeolis.model INFO                      Tdry = 7200.00
+2019-02-19 17:20:15,549 aeolis.model INFO                     Tsalt = 2592000.00
+2019-02-19 17:20:15,549 aeolis.model INFO                     V_lat = 0.000000
+2019-02-19 17:20:15,549 aeolis.model INFO                     V_ver = 5.00
+2019-02-19 17:20:15,549 aeolis.model INFO                    accfac = 1
+2019-02-19 17:20:15,549 aeolis.model INFO                      alfa = 0.400000
+2019-02-19 17:20:15,549 aeolis.model INFO                  bed_file = bed_file.txt
+2019-02-19 17:20:15,549 aeolis.model INFO              bedcomp_file = <novalue>
+2019-02-19 17:20:15,549 aeolis.model INFO                 bedupdate = T
+2019-02-19 17:20:15,549 aeolis.model INFO                      beta = 130.00
+2019-02-19 17:20:15,549 aeolis.model INFO                        bi = 0.500000
+2019-02-19 17:20:15,549 aeolis.model INFO          boundary_lateral = noflux
+2019-02-19 17:20:15,549 aeolis.model INFO         boundary_offshore = noflux
+2019-02-19 17:20:15,549 aeolis.model INFO          boundary_onshore = gradient
+2019-02-19 17:20:15,549 aeolis.model INFO                  callback = <novalue>
+2019-02-19 17:20:15,549 aeolis.model INFO                     cpair = 0.001004
+2019-02-19 17:20:15,549 aeolis.model INFO                     csalt = 0.035000
+2019-02-19 17:20:15,549 aeolis.model INFO                     dcomp = 0.400000
+2019-02-19 17:20:15,549 aeolis.model INFO                        dt = 1800.00
+2019-02-19 17:20:15,549 aeolis.model INFO               dz_interval = 1814400
+2019-02-19 17:20:15,549 aeolis.model INFO                    dz_opt = 0.000000
+2019-02-19 17:20:15,549 aeolis.model INFO                    dz_tol = 0.050000
+2019-02-19 17:20:15,549 aeolis.model INFO                       eps = 0.001000
+2019-02-19 17:20:15,564 aeolis.model INFO                    eroveg = 1.00
+2019-02-19 17:20:15,565 aeolis.model INFO                    facDOD = 0.100000
+2019-02-19 17:20:15,565 aeolis.model INFO               fixed_layer = 0.000000
+2019-02-19 17:20:15,565 aeolis.model INFO                         g = 9.81
+2019-02-19 17:20:15,565 aeolis.model INFO                     gamma = 0.500000
+2019-02-19 17:20:15,565 aeolis.model INFO                 germinate = 1.00
+2019-02-19 17:20:15,565 aeolis.model INFO                grain_dist = 1.00
+2019-02-19 17:20:15,565 aeolis.model INFO                grain_size = 0.000250
+2019-02-19 17:20:15,565 aeolis.model INFO                         h = 10.00
+2019-02-19 17:20:15,565 aeolis.model INFO                  hveg_max = 1.00
+2019-02-19 17:20:15,565 aeolis.model INFO                         k = 0.010000
+2019-02-19 17:20:15,565 aeolis.model INFO                    karman = 0.410000
+2019-02-19 17:20:15,565 aeolis.model INFO                   lateral = 0.000000
+2019-02-19 17:20:15,565 aeolis.model INFO           layer_thickness = 0.050000
+2019-02-19 17:20:15,565 aeolis.model INFO                         m = 0.500000
+2019-02-19 17:20:15,565 aeolis.model INFO                    m_kCut = 2.00
+2019-02-19 17:20:15,565 aeolis.model INFO                 max_error = 0.000001
+2019-02-19 17:20:15,565 aeolis.model INFO                  max_iter = 50
+2019-02-19 17:20:15,565 aeolis.model INFO                meteo_file = <novalue>
+2019-02-19 17:20:15,565 aeolis.model INFO              method_moist = belly_johnson
+2019-02-19 17:20:15,565 aeolis.model INFO          method_transport = cdm
+2019-02-19 17:20:15,565 aeolis.model INFO                   ne_file = ne_file.txt
+2019-02-19 17:20:15,565 aeolis.model INFO                nfractions = 1
+2019-02-19 17:20:15,565 aeolis.model INFO                   nlayers = 1
+2019-02-19 17:20:15,565 aeolis.model INFO                nsavetimes = 4
+2019-02-19 17:20:15,565 aeolis.model INFO                        nx = 600
+2019-02-19 17:20:15,565 aeolis.model INFO                       nxm = 599
+2019-02-19 17:20:15,565 aeolis.model INFO                       nxp = 601
+2019-02-19 17:20:15,565 aeolis.model INFO                        ny = 200
+2019-02-19 17:20:15,565 aeolis.model INFO                       nym = 199
+2019-02-19 17:20:15,565 aeolis.model INFO                       nyp = 201
+2019-02-19 17:20:15,565 aeolis.model INFO               output_file = C:\Users\weste_bt\AeoLiS\Examples\Parabolic\configfile.nc
+2019-02-19 17:20:15,565 aeolis.model INFO              output_times = 604800
+2019-02-19 17:20:15,582 aeolis.model INFO              output_types = 
+2019-02-19 17:20:15,582 aeolis.model INFO               output_vars = zb
+2019-02-19 17:20:15,582 aeolis.model INFO                             ustar
+2019-02-19 17:20:15,582 aeolis.model INFO                             tau
+2019-02-19 17:20:15,582 aeolis.model INFO                             ustarn
+2019-02-19 17:20:15,582 aeolis.model INFO                             ustars
+2019-02-19 17:20:15,582 aeolis.model INFO                             uth
+2019-02-19 17:20:15,582 aeolis.model INFO                             zsep
+2019-02-19 17:20:15,582 aeolis.model INFO                             uu
+2019-02-19 17:20:15,582 aeolis.model INFO                             Cu
+2019-02-19 17:20:15,582 aeolis.model INFO                             Ct
+2019-02-19 17:20:15,582 aeolis.model INFO                             uus
+2019-02-19 17:20:15,582 aeolis.model INFO                             uun
+2019-02-19 17:20:15,582 aeolis.model INFO                             zs
+2019-02-19 17:20:15,582 aeolis.model INFO                             ustar0
+2019-02-19 17:20:15,582 aeolis.model INFO                             vegfac
+2019-02-19 17:20:15,582 aeolis.model INFO                             rhoveg
+2019-02-19 17:20:15,582 aeolis.model INFO                             dzyear_avg
+2019-02-19 17:20:15,582 aeolis.model INFO                             hveg
+2019-02-19 17:20:15,582 aeolis.model INFO                             dhveg
+2019-02-19 17:20:15,582 aeolis.model INFO                             Ts
+2019-02-19 17:20:15,582 aeolis.model INFO                             germinate
+2019-02-19 17:20:15,582 aeolis.model INFO                             dzyear
+2019-02-19 17:20:15,582 aeolis.model INFO                  porosity = 0.400000
+2019-02-19 17:20:15,582 aeolis.model INFO         process_avalanche = T
+2019-02-19 17:20:15,582 aeolis.model INFO         process_bedupdate = T
+2019-02-19 17:20:15,582 aeolis.model INFO          process_humidity = F
+2019-02-19 17:20:15,582 aeolis.model INFO           process_inertia = F
+2019-02-19 17:20:15,582 aeolis.model INFO             process_meteo = F
+2019-02-19 17:20:15,582 aeolis.model INFO       process_mixtoplayer = T
+2019-02-19 17:20:15,582 aeolis.model INFO             process_moist = T
+2019-02-19 17:20:15,582 aeolis.model INFO             process_runup = T
+2019-02-19 17:20:15,599 aeolis.model INFO              process_salt = F
+2019-02-19 17:20:15,599 aeolis.model INFO        process_separation = T
+2019-02-19 17:20:15,599 aeolis.model INFO             process_shear = T
+2019-02-19 17:20:15,599 aeolis.model INFO         process_threshold = T
+2019-02-19 17:20:15,599 aeolis.model INFO              process_tide = T
+2019-02-19 17:20:15,599 aeolis.model INFO         process_transport = T
+2019-02-19 17:20:15,599 aeolis.model INFO              process_wave = T
+2019-02-19 17:20:15,599 aeolis.model INFO              process_wind = T
+2019-02-19 17:20:15,599 aeolis.model INFO                   refdate = 2018-01-01
+2019-02-19 17:20:15,599 aeolis.model INFO                   restart = <novalue>
+2019-02-19 17:20:15,599 aeolis.model INFO                      rhoa = 1.23
+2019-02-19 17:20:15,599 aeolis.model INFO                      rhop = 2650.00
+2019-02-19 17:20:15,599 aeolis.model INFO                      rhow = 1025.00
+2019-02-19 17:20:15,599 aeolis.model INFO                     runup = T
+2019-02-19 17:20:15,599 aeolis.model INFO                    scheme = euler_backward
+2019-02-19 17:20:15,599 aeolis.model INFO             sedimentinput = 0.000000
+2019-02-19 17:20:15,599 aeolis.model INFO                     sigma = 4.20
+2019-02-19 17:20:15,599 aeolis.model INFO               th_bedslope = F
+2019-02-19 17:20:15,599 aeolis.model INFO              th_grainsize = T
+2019-02-19 17:20:15,599 aeolis.model INFO               th_humidity = F
+2019-02-19 17:20:15,599 aeolis.model INFO               th_moisture = T
+2019-02-19 17:20:15,599 aeolis.model INFO              th_roughness = F
+2019-02-19 17:20:15,599 aeolis.model INFO                   th_salt = F
+2019-02-19 17:20:15,599 aeolis.model INFO            threshold_file = <novalue>
+2019-02-19 17:20:15,599 aeolis.model INFO            threshold_mask = <novalue>
+2019-02-19 17:20:15,599 aeolis.model INFO                 tide_file = tide_file.txt
+2019-02-19 17:20:15,599 aeolis.model INFO                 tide_mask = <novalue>
+2019-02-19 17:20:15,599 aeolis.model INFO                    tstart = 0.000000
+2019-02-19 17:20:15,599 aeolis.model INFO                     tstop = 1155760000.00
+2019-02-19 17:20:15,599 aeolis.model INFO                      tveg = 3.00
+2019-02-19 17:20:15,599 aeolis.model INFO                         v = 0.000015
+2019-02-19 17:20:15,599 aeolis.model INFO                  veg_alfa = 1.00
+2019-02-19 17:20:15,614 aeolis.model INFO                  veg_beta = 0.000000
+2019-02-19 17:20:15,615 aeolis.model INFO                 veg_gamma = 1.00
+2019-02-19 17:20:15,615 aeolis.model INFO                 wave_file = wave_file.txt
+2019-02-19 17:20:15,615 aeolis.model INFO                 wave_mask = <novalue>
+2019-02-19 17:20:15,615 aeolis.model INFO           wind_convention = cartesian
+2019-02-19 17:20:15,615 aeolis.model INFO                 wind_file = wind_file.txt
+2019-02-19 17:20:15,615 aeolis.model INFO                xgrid_file = xgrid_file.txt
+2019-02-19 17:20:15,615 aeolis.model INFO                        xi = 0.300000
+2019-02-19 17:20:15,615 aeolis.model INFO                ygrid_file = ygrid_file.txt
+2019-02-19 17:20:15,615 aeolis.model INFO                         z = 10.00
+2019-02-19 17:20:15,615 aeolis.model INFO     **********************************************************
+2019-02-19 17:20:15,615 aeolis.model INFO     
+2019-02-19 17:20:18,916 aeolis.model INFO     000.0%   0:00:02 / 17 days, 23:01:20 / 17 days, 23:01:18 / 0.002976190476190476
+2019-02-19 17:21:20,600 aeolis.model INFO     000.0%   0:01:04 / 17 days, 0:18:58 / 17 days, 0:17:54 / 0.08333333333333333
+2019-02-19 17:22:21,900 aeolis.model INFO     000.0%   0:02:05 / 16 days, 22:39:33 / 16 days, 22:37:27 / 0.1636904761904762
+2019-02-19 17:23:22,767 aeolis.model INFO     000.0%   0:03:06 / 16 days, 21:09:02 / 16 days, 21:05:56 / 0.24404761904761904
+2019-02-19 17:24:24,600 aeolis.model INFO     000.0%   0:04:08 / 16 days, 18:16:51 / 16 days, 18:12:43 / 0.3273809523809524
+2019-02-19 17:25:24,601 aeolis.model INFO     000.0%   0:05:08 / 16 days, 17:06:46 / 16 days, 17:01:37 / 0.40773809523809523
+2019-02-19 17:26:25,418 aeolis.model INFO     000.0%   0:06:09 / 16 days, 17:13:04 / 16 days, 17:06:55 / 0.4880952380952381
+2019-02-19 17:27:25,819 aeolis.model INFO     000.0%   0:07:09 / 16 days, 16:54:13 / 16 days, 16:47:04 / 0.5684523809523809
+2019-02-19 17:28:26,435 aeolis.model INFO     000.0%   0:08:10 / 16 days, 16:50:39 / 16 days, 16:42:29 / 0.6488095238095238
+2019-02-19 17:29:27,019 aeolis.model INFO     000.0%   0:09:11 / 16 days, 16:46:27 / 16 days, 16:37:16 / 0.7291666666666666
+2019-02-19 17:30:28,219 aeolis.model INFO     000.0%   0:10:12 / 16 days, 17:07:19 / 16 days, 16:57:08 / 0.8095238095238095
+2019-02-19 17:31:29,736 aeolis.model INFO     000.0%   0:11:13 / 16 days, 17:35:46 / 16 days, 17:24:33 / 0.8898809523809523
+2019-02-19 17:32:30,587 aeolis.model INFO     000.1%   0:12:14 / 16 days, 17:37:37 / 16 days, 17:25:23 / 0.9702380952380952
+2019-02-19 17:33:31,420 aeolis.model INFO     000.1%   0:13:15 / 16 days, 17:38:41 / 16 days, 17:25:26 / 1.0505952380952381
+2019-02-19 17:34:32,436 aeolis.model INFO     000.1%   0:14:16 / 16 days, 17:44:43 / 16 days, 17:30:27 / 1.130952380952381
+2019-02-19 17:35:33,030 aeolis.model INFO     000.1%   0:15:17 / 16 days, 17:38:52 / 16 days, 17:23:36 / 1.2113095238095237
+2019-02-19 17:36:34,451 aeolis.model INFO     000.1%   0:16:18 / 16 days, 17:54:08 / 16 days, 17:37:50 / 1.2916666666666667
+2019-02-19 17:37:35,105 aeolis.model INFO     000.1%   0:17:19 / 16 days, 17:49:49 / 16 days, 17:32:30 / 1.3720238095238095
+2019-02-19 17:38:35,904 aeolis.model INFO     000.1%   0:18:19 / 16 days, 17:49:08 / 16 days, 17:30:49 / 1.4523809523809523
+2019-02-19 17:39:37,655 aeolis.model INFO     000.1%   0:19:21 / 16 days, 18:08:20 / 16 days, 17:48:59 / 1.5327380952380953
+2019-02-19 17:40:39,888 aeolis.model INFO     000.1%   0:20:23 / 16 days, 18:35:08 / 16 days, 18:14:44 / 1.6130952380952381
+2019-02-19 17:41:39,905 aeolis.model INFO     000.1%   0:21:23 / 16 days, 19:00:12 / 16 days, 18:38:48 / 1.6904761904761905
+2019-02-19 17:42:42,188 aeolis.model INFO     000.1%   0:22:26 / 16 days, 19:23:08 / 16 days, 19:00:42 / 1.7708333333333333
+2019-02-19 17:43:43,606 aeolis.model INFO     000.1%   0:23:27 / 16 days, 19:29:13 / 16 days, 19:05:45 / 1.8511904761904763
+2019-02-19 17:44:45,406 aeolis.model INFO     000.1%   0:24:29 / 16 days, 19:41:05 / 16 days, 19:16:36 / 1.931547619047619
+2019-02-19 17:45:46,441 aeolis.model INFO     000.1%   0:25:30 / 16 days, 20:51:46 / 16 days, 20:26:16 / 2.005952380952381
+2019-02-19 17:46:47,113 aeolis.model INFO     000.1%   0:26:31 / 16 days, 21:17:02 / 16 days, 20:50:32 / 2.0833333333333335
+2019-02-19 17:47:47,202 aeolis.model INFO     000.1%   0:27:31 / 16 days, 21:31:55 / 16 days, 21:04:24 / 2.1607142857142856
+2019-02-19 17:48:49,158 aeolis.model INFO     000.1%   0:28:33 / 16 days, 21:39:57 / 16 days, 21:11:25 / 2.2410714285714284
+2019-02-19 17:49:50,341 aeolis.model INFO     000.1%   0:29:34 / 16 days, 21:36:51 / 16 days, 21:07:17 / 2.3214285714285716
+2019-02-19 17:50:51,866 aeolis.model INFO     000.1%   0:30:35 / 16 days, 21:38:28 / 16 days, 21:07:53 / 2.4017857142857144
+2019-02-19 17:51:53,522 aeolis.model INFO     000.1%   0:31:37 / 16 days, 21:41:40 / 16 days, 21:10:03 / 2.482142857142857
+2019-02-19 17:52:53,599 aeolis.model INFO     000.1%   0:32:37 / 16 days, 22:21:41 / 16 days, 21:49:04 / 2.556547619047619
+2019-02-19 17:53:54,897 aeolis.model INFO     000.1%   0:33:38 / 16 days, 22:46:36 / 16 days, 22:12:57 / 2.6339285714285716
+2019-02-19 17:54:55,826 aeolis.model INFO     000.1%   0:34:39 / 16 days, 23:05:46 / 16 days, 22:31:07 / 2.7113095238095237
+2019-02-19 17:55:58,021 aeolis.model INFO     000.1%   0:35:42 / 16 days, 23:12:15 / 16 days, 22:36:34 / 2.7916666666666665
+2019-02-19 17:56:58,191 aeolis.model INFO     000.2%   0:36:42 / 16 days, 23:21:15 / 16 days, 22:44:33 / 2.869047619047619
+2019-02-19 17:57:58,719 aeolis.model INFO     000.2%   0:37:42 / 16 days, 23:33:39 / 16 days, 22:55:57 / 2.9464285714285716
+2019-02-19 17:59:00,046 aeolis.model INFO     000.2%   0:38:44 / 16 days, 23:53:49 / 16 days, 23:15:05 / 3.0238095238095237
+2019-02-19 18:00:02,032 aeolis.model INFO     000.2%   0:39:46 / 16 days, 23:56:16 / 16 days, 23:16:30 / 3.1041666666666665
+2019-02-19 18:01:03,051 aeolis.model INFO     000.2%   0:40:47 / 17 days, 0:34:44 / 16 days, 23:53:57 / 3.1785714285714284
+2019-02-19 18:02:04,120 aeolis.model INFO     000.2%   0:41:48 / 17 days, 1:34:25 / 17 days, 0:52:37 / 3.25
+2019-02-19 18:03:05,565 aeolis.model INFO     000.2%   0:42:49 / 17 days, 2:13:05 / 17 days, 1:30:16 / 3.324404761904762
+2019-02-19 18:04:05,631 aeolis.model INFO     000.2%   0:43:49 / 17 days, 2:15:35 / 17 days, 1:31:45 / 3.4017857142857144
+2019-02-19 18:05:06,410 aeolis.model INFO     000.2%   0:44:50 / 17 days, 2:24:29 / 17 days, 1:39:39 / 3.4791666666666665
+2019-02-19 18:06:08,290 aeolis.model INFO     000.2%   0:45:52 / 17 days, 2:42:53 / 17 days, 1:57:01 / 3.556547619047619
+2019-02-19 18:07:09,647 aeolis.model INFO     000.2%   0:46:53 / 17 days, 2:55:54 / 17 days, 2:09:01 / 3.6339285714285716
+2019-02-19 18:08:11,181 aeolis.model INFO     000.2%   0:47:55 / 17 days, 3:09:54 / 17 days, 2:21:59 / 3.7113095238095237
+2019-02-19 18:09:13,484 aeolis.model INFO     000.2%   0:48:57 / 17 days, 3:29:47 / 17 days, 2:40:50 / 3.7886904761904763
+2019-02-19 18:10:15,965 aeolis.model INFO     000.2%   0:49:59 / 17 days, 4:09:23 / 17 days, 3:19:23 / 3.863095238095238
+2019-02-19 18:11:17,076 aeolis.model INFO     000.2%   0:51:01 / 17 days, 4:36:24 / 17 days, 3:45:23 / 3.9375
+2019-02-19 18:12:18,793 aeolis.model INFO     000.2%   0:52:02 / 17 days, 5:07:13 / 17 days, 4:15:11 / 4.011904761904762
+2019-02-19 18:13:19,507 aeolis.model INFO     000.2%   0:53:03 / 17 days, 5:29:07 / 17 days, 4:36:04 / 4.086309523809524
+2019-02-19 18:14:20,689 aeolis.model INFO     000.2%   0:54:04 / 17 days, 5:53:47 / 17 days, 4:59:43 / 4.160714285714286
+2019-02-19 18:15:21,083 aeolis.model INFO     000.2%   0:55:05 / 17 days, 6:11:41 / 17 days, 5:16:36 / 4.2351190476190474
+2019-02-19 18:16:22,958 aeolis.model INFO     000.2%   0:56:06 / 17 days, 6:22:44 / 17 days, 5:26:37 / 4.3125
+2019-02-19 18:17:23,342 aeolis.model INFO     000.2%   0:57:07 / 17 days, 6:22:34 / 17 days, 5:25:27 / 4.3898809523809526
+2019-02-19 18:18:25,292 aeolis.model INFO     000.2%   0:58:09 / 17 days, 6:17:02 / 17 days, 5:18:53 / 4.470238095238095
+2019-02-19 18:19:25,794 aeolis.model INFO     000.2%   0:59:09 / 17 days, 6:17:48 / 17 days, 5:18:38 / 4.5476190476190474
+2019-02-19 18:20:25,809 aeolis.model INFO     000.2%   1:00:09 / 17 days, 6:15:11 / 17 days, 5:15:02 / 4.625
+2019-02-19 18:21:28,001 aeolis.model INFO     000.2%   1:01:12 / 17 days, 6:58:56 / 17 days, 5:57:44 / 4.696428571428571
+2019-02-19 18:22:28,878 aeolis.model INFO     000.2%   1:02:12 / 17 days, 7:17:01 / 17 days, 6:14:49 / 4.770833333333333
+2019-02-19 18:23:29,205 aeolis.model INFO     000.3%   1:03:13 / 17 days, 7:30:56 / 17 days, 6:27:44 / 4.845238095238095
+2019-02-19 18:24:31,306 aeolis.model INFO     000.3%   1:04:15 / 17 days, 7:40:50 / 17 days, 6:36:36 / 4.9226190476190474
+2019-02-19 18:25:33,636 aeolis.model INFO     000.3%   1:05:17 / 17 days, 7:37:02 / 17 days, 6:31:45 / 5.002976190476191
+2019-02-19 18:26:36,082 aeolis.model INFO     000.3%   1:06:20 / 17 days, 7:48:42 / 17 days, 6:42:22 / 5.080357142857143
+2019-02-19 18:27:37,982 aeolis.model INFO     000.3%   1:07:21 / 17 days, 7:56:38 / 17 days, 6:49:17 / 5.157738095238095
+2019-02-19 18:28:38,249 aeolis.model INFO     000.3%   1:08:22 / 17 days, 8:08:36 / 17 days, 7:00:14 / 5.232142857142857
+2019-02-19 18:29:39,291 aeolis.model INFO     000.3%   1:09:23 / 17 days, 8:10:53 / 17 days, 7:01:30 / 5.309523809523809
+2019-02-19 18:30:39,407 aeolis.model INFO     000.3%   1:10:23 / 17 days, 8:35:14 / 17 days, 7:24:51 / 5.380952380952381
+2019-02-19 18:31:40,811 aeolis.model INFO     000.3%   1:11:24 / 17 days, 8:52:49 / 17 days, 7:41:24 / 5.455357142857143
+2019-02-19 18:32:42,466 aeolis.model INFO     000.3%   1:12:26 / 17 days, 8:57:54 / 17 days, 7:45:28 / 5.532738095238095
+2019-02-19 18:33:43,934 aeolis.model INFO     000.3%   1:13:27 / 17 days, 9:01:48 / 17 days, 7:48:20 / 5.6101190476190474
+2019-02-19 18:34:44,118 aeolis.model INFO     000.3%   1:14:28 / 17 days, 9:11:29 / 17 days, 7:57:02 / 5.684523809523809
+2019-02-19 18:35:44,335 aeolis.model INFO     000.3%   1:15:28 / 17 days, 9:21:07 / 17 days, 8:05:39 / 5.758928571428571
+2019-02-19 18:36:45,819 aeolis.model INFO     000.3%   1:16:29 / 17 days, 9:24:38 / 17 days, 8:08:09 / 5.836309523809524
+2019-02-19 18:37:47,586 aeolis.model INFO     000.3%   1:17:31 / 17 days, 9:29:35 / 17 days, 8:12:04 / 5.913690476190476
