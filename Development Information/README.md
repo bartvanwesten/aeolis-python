@@ -75,9 +75,10 @@ including the formation of barchan dunes, parabolic and embryo dune fields.
 pip install aeolis
 ```
 
-5b. Alternative AeoLiS (newer) version. Download/clone the desired AeoLiS version and in Anaconda Prompt run:
+5b. Alternative AeoLiS (newer) version. Download/clone the desired AeoLiS version (https://github.com/bartvanwesten/aeolis-python/tree/master/aeolis).
+In Anaconda Prompt run:
 
-Development
+Development (If you want to make changes to the source code, after installation)
 ```
 python setup.py develop
 ```
