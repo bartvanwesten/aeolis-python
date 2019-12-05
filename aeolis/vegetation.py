@@ -39,6 +39,9 @@ def initialize (s,p):
 
     s['rhoveg'][:, :] = p['veg_file']
 
+    if np.isnan(s['rhoveg'][0, 0]):
+        s['rhoveg'][:,:] = 0.
+
     ix = s['rhoveg'] < 0.03
     s['rhoveg'][ix] *= 0.
     s['hveg'][:, :] = p['hveg_max']*np.sqrt(s['rhoveg'])
@@ -60,7 +63,7 @@ def germinate (s,p):
     p_germinate_dt = 1-(1-p_germinate_year)**(1/n)
     germination = np.random.random((s['germinate'].shape))
     
-    s['germinate'] += (s['dz_avg'] >= 0.) * (p['_time'] > p['dz_interval']) * (germination <= p_germinate_dt)
+    s['germinate'] += (s['dzveg'] >= -0.01) * (p['_time'] > p['dz_interval']) * (germination <= p_germinate_dt)
     s['germinate'] = np.minimum(s['germinate'],1.)
 
     # SINGLE EMBRYO TEST
@@ -96,21 +99,20 @@ def grow (s, p):
     
     ix = np.logical_or(s['germinate'] != 0., s['lateral'] != 0.) * ( p['V_ver'] > 0.)
 
-    V_ver = p['V_ver']/(365.25*24*3600) #[m/s]
-    gamma = p['veg_gamma']
-
     s['drhoveg'][:,:] *= 0.
 
     # Reduction of vegetation growth due to sediment burial
-    dz = s['dzyear_avg']/(365.25*24*3600) #[m/s]
+    s['dhveg'][ix] = p['V_ver'] * (1 - s['hveg'][ix]/p['hveg_max']) - np.abs(s['dzveg'][ix])*p['veg_gamma'] # m/year
+    s['dhveg'] = np.maximum(s['dhveg'], -3.)
 
-    # Competation of growth
-
-    s['dhveg'][ix] = V_ver * (1 - s['hveg'][ix]/p['hveg_max']) - np.abs(dz[ix])*gamma
+    # if p['_time'] > p['dz_interval']:
+    #     import matplotlib.pyplot as plt
+    #     plt.pcolormesh(s['x'], s['y'], s['dhveg'], vmin=-1, vmax=1)
+    #     plt.colorbar()
+    #     plt.show()
 
     # Adding growth
-
-    s['hveg'] += s['dhveg']*p['dt']
+    s['hveg'] += s['dhveg']*p['dt']/(365.25*24*3600)
 
     # Compute the density
 
@@ -140,25 +142,35 @@ def vegshear(s, p):
     
     roughness = 16.
     nf = p['nfractions']
-    
+
+# -----------------------------
     ets = np.zeros(s['zb'].shape)
     etn = np.zeros(s['zb'].shape)
     ets[:,:] = 1.
-    
+
     ix = s['ustar'] != 0.
     ets[ix] = s['ustars'][ix]/s['ustar'][ix]
     etn[ix] = s['ustarn'][ix]/s['ustar'][ix]
-    
-    s['vegfac']= 1./(1. + roughness*s['rhoveg'])
-    
-    s['tau'] *= s['vegfac']
 
-    s['taus'] = ets * s['tau']
-    s['taun'] = etn * s['tau']
+    s['vegfac'] = 1. / np.sqrt(1. + roughness * s['rhoveg'])
 
-    s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
+    s['ustar'] *= s['vegfac']
     s['ustars']  = s['ustar'] * ets
     s['ustarn']  = s['ustar'] * etn
+# ------------------------------
+    
+    # s['vegfac']= 1./(1. + roughness*s['rhoveg'])
+    #
+    # s['tau'] *= s['vegfac']
+    #
+    # s['taus'] = ets * s['tau']
+    # s['taun'] = etn * s['tau']
+    #
+    # s['ustar'] = np.sqrt(s['tau'] /p['rhoa'])
+    # s['ustars']  = s['ustar'] * ets
+    # s['ustarn']  = s['ustar'] * etn
+
+# --------------------------------------
     
     # vegfac = np.repeat(s['vegfac'][:,:,np.newaxis], nf, axis = 0)
     # tauth = p['rhoa']*s['uth']**2

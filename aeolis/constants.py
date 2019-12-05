@@ -96,9 +96,8 @@ MODEL_STATE = {
         'stall',                            # TEMP!
         'zsepnofil',                        # TEMP!
         'dz',                               # TEMP!
-        'dz_avg',
         'dzyear',                           # NEW!
-        'dzyear_avg',
+        'dzveg',
         'zb_avg',
         'zshear',
         'zshearzb',
@@ -237,7 +236,7 @@ DEFAULT_CONFIG = {
     'grain_dist'          : [1.],               # [-] Initial distribution of sediment fractions
     'nfractions'          : 1,                  # [-] Number of sediment fractions
     'nlayers'             : 3,                  # [-] Number of bed layers
-    'nsavetimes'          : 1,                 # [-] NEW! For smoother results
+    # 'nsavetimes'          : 1,                 # [-] NEW! For smoother results
     'dz_interval'         : 86400.,             # [s] NEW! For vegetation
     'layer_thickness'     : .01,                # [m] Thickness of bed layers
     'g'                   : 9.81,               # [m/s^2] Gravitational constant

@@ -119,7 +119,9 @@ def interpolate(s, p, t):
 
     # compute saltation velocity
     z = p['z']
-    z0 = 0.001 # See Duran, 2007 p.47 - p['grain_size'][0]/20. # p['k']
+    # z0 = 0.001  - p['grain_size'][0]/20. # p['k']
+    # z0 = p['grain_size'][0]/20. # See Duran, 2007 p.47
+    z0 = p['grain_size'][0]/30.
     
     # Determine shear velocity
     
@@ -165,6 +167,12 @@ def shear(s,p):
         s['tau'] = np.hypot(s['taus'], s['taun'])
 
         s = stress2velocity(s, p)
+
+        # import matplotlib.pyplot as plt
+        # plt.pcolormesh(s['x'], s['y'], s['ustar'])
+        # # plt.pcolormesh(s['x'], s['y'], (np.sqrt(2 * alfa) * uf / Ax[:,:,0]) * dhs[:,:,0])
+        # plt.colorbar()
+        # plt.show()
         
         if p['process_separation']:
             s['dzsep'] = s['shear'].get_separation()

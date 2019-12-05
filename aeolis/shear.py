@@ -195,7 +195,9 @@ class WindShear:
         # Interpolate real grid with shear stresses and separation bubble
         self.igrid['taux'] = self.interpolate(gc['x'], gc['y'], gc['taux'], gi['x'], gi['y'])
         self.igrid['tauy'] = self.interpolate(gc['x'], gc['y'], gc['tauy'], gi['x'], gi['y'])
-        self.igrid['dzsep'] = self.interpolate(gc['x'], gc['y'], gc['dzsep'], gi['x'], gi['y'])
+
+        if process_separation:
+            self.igrid['dzsep'] = self.interpolate(gc['x'], gc['y'], gc['dzsep'], gi['x'], gi['y'])
 
         # Filled rotational grid, now rotate it back to original direction
 
@@ -424,12 +426,13 @@ class WindShear:
         hs = np.fft.fft2(g['z'])
         
         # Filter
-        hs = self.filter_highfrequenies(kx, ky, hs, (1.5, 6), 0.01)
+        hs = self.filter_highfrequenies(kx, ky, hs, (1.5, 6), 0.001)
 
         # 1. Auxiliary variables
         #-----------------------
         # 1.1 Mean lengthscale
-        L = np.sum(np.absolute(hs)) / np.sum(np.absolute(kx*hs)) #according to Duran(2007)
+        # L = np.sum(np.absolute(hs)) / np.sum(np.absolute(kx*hs)) #according to Duran(2007)
+        L = 50 # TEST
         
         # 1.2 Inner layer height
         l = 1.0
@@ -757,22 +760,22 @@ class WindShear:
         stall += np.logical_and(abs(dz) > 20., dz < 0) # p['M_sep'] # 30
         
         stall[1:-1,:] += np.logical_and(stall[1:-1,:]==0, stall[:-2,:]>0, stall[2:,:]>0)
-        stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0) 
+        stall[:,1:-1] += np.logical_and(stall[:,1:-1]==0, stall[:,:-2]>0, stall[:,2:]>0)
         
         bubble[:,:-1] = np.logical_and(stall[:,:-1] == 0, stall[:,1:] > 0) # define bubble
-
-
-
         
         # Shift bubble n cells back
         n = 2
         bubble[:,:-n] = bubble[:,n:]
         bubble[:,:n] = 0
+
+        # import matplotlib.pyplot as plt
+        # plt.pcolormesh(x, y, bubble)
+        # plt.colorbar()
+        # plt.show()
         
         bubble = bubble.astype(int)
 
-
-        
         # Count separation bubbles
         
         n = np.sum(bubble)
@@ -785,25 +788,23 @@ class WindShear:
             i = bubble_n[k,1]
             j = bubble_n[k,0]
 
-            ix_neg = (dz[j, i:] >= 0)
+            ix_neg = (dz[j, i+5:] >= 0)
+
+            # print(n)
+            # print(k)
+            #
+            # import matplotlib.pyplot as plt
+            # plt.plot(x[j, i:], dz[j, i:])
+            # plt.show()
 
             if np.sum(ix_neg) == 0:
                 hb = z[j,i]
             else:
-                hb = z[j,i] - z[j,i+np.where(ix_neg)[0][0]]
-
-                # print('-----------------')
-                # print(g['x'][j,i])
-                # print(g['y'][j, i])
-                # print(z[j,i])
-                #
-                # plt.pcolormesh(g['x'], g['y'], dz)
-                # plt.colorbar()
-                # plt.show()
+                hb = z[j,i] - z[j,i+5+np.where(ix_neg)[0][0]]
 
             # Walk through all separation bubbles and determine polynoms
         
-            dzdx0 = (z[j,i]-z[j,i-2])/(2*dx)
+            dzdx0 = (z[j,i-1]-z[j,i-2])/(dx)
         
             a = dzdx0 / slope
             # l = np.minimum(np.maximum((1.5 * z[j,i] / slope) * (1 + a*0.25 + 0.125*a**2),.1),200.)
@@ -813,9 +814,8 @@ class WindShear:
             a3 =  2 * hb/l**3 +     dzdx0 / l**2
           
             i_max = min(i+int(l/dx),int(nx-1))
-            # xs = x[j,i:i_max] - x[j,i]
-            xs = np.arange(0, (i_max - i)*dx, dx)
-
+            xs = x[j,i:i_max] - x[j,i]
+            # xs = np.arange(0, (i_max - i)*dx, dx)
             
             zsep0[j,i:i_max] = ((a3 * xs + a2) * xs + dzdx0) * xs + z[j,i]
             
@@ -863,20 +863,19 @@ class WindShear:
 #                zsep1[j,i:i_max] = ((a3_cut*xs + a2_cut) * xs + dzdx0[j,i])*xs + z[j,i]
 #                zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep1[j,i:i_max])
 #            else:
+
             zsep[j,i:i_max] = np.maximum(zsep[j,i:i_max], zsep0[j,i:i_max]) # zsep1
 
-        # plt.pcolormesh(g['x'], g['y'], zsep)
+        # import matplotlib.pyplot as plt
+        # plt.pcolormesh(x, y, zsep0)
         # plt.colorbar()
-        # plt.show()
-        #
-        # plt.plot(x[150,:], zsep[150,:])
         # plt.show()
 
         return zsep
     
     def separation_shear(self, dzsep):
         
-        m_tau_sepbub = .05
+        m_tau_sepbub = .2 #0.05
         slope = 0.2 #np.tan(np.deg2rad(34.)) #Mcr_dyn
         delta = 1./(slope*m_tau_sepbub)
         

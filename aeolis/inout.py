@@ -112,6 +112,8 @@ def read_configfile(configfile, parse_files=True, load_defaults=True):
     p['nxm'] = p['nx'] - 1 
     p['nym'] = p['ny'] - 1
 
+    p['nsavetimes'] = int(p['dz_interval'] / p['dt'])
+
     return p
 
 

@@ -123,14 +123,18 @@ def time(s , p ):
 
     # Calculate average
     s['Ct_avg'] = s['Ct_time'].sum(3) / p['nsavetimes']
+
+    # -------------------------------------------------
     
     # Collect time steps
 
-    s['dzyear_time'][:,:,:-1] = s['dzyear_time'][:,:,1:].copy()
-    s['dzyear_time'][:,:,-1] = s['dzyear'].copy()
+    s['dzyear'] = s['dz'] * (3600. * 24. * 365.25) / p['dt']
+
+    s['dzyear_time'] = np.delete(s['dzyear_time'], 0, axis=2)
+    s['dzyear_time'] = np.dstack((s['dzyear_time'], s['dzyear']))
 
     # Calculate average
-    s['dzyear_avg'] = s['dzyear_time'].sum(2) / p['nsavetimes']
+    s['dzveg'] = np.average(s['dzyear_time'], axis=2)
     
     return s
 
@@ -220,20 +224,11 @@ def update(s, p):
         
         # redistribute sediment from inactive zone to marine interaction zone
         
-        s['dzyear'] = dz * (3600. * 24. * 365.25) / p['dt']
-        
         s['zb'] += dz
         s['zs'] += dz
         
         ix = s['zs'] > ( s['zb'] + 0.01 )
         s['zb'][ix] += (s['zb0'][ix] - s['zb'][ix])*0.01
-        
-        # TEMP FOR INFLUX
-        
-#        s['zb'][0,:] = 0.
-#        s['zb'][-1,:] = 0.
-#        s['zb'][:,0] = 0.
-#        s['zb'][:,-1] = 0.
 
 
     return s

@@ -249,12 +249,15 @@ class AeoLiS(IBmi):
         
         # compute threshold
         self.s = aeolis.threshold.compute(self.s, self.p)
+
+        # compute shear velocity stress and grain speed
+        self.s = aeolis.transport.grainspeed(self.s, self.p)
         
         #compute vegetation shear
         self.s = aeolis.vegetation.vegshear(self.s, self.p)
-        
-        # compute shear velocity stress and grain speed
-        self.s = aeolis.transport.grainspeed(self.s, self.p)
+
+        # # compute shear velocity stress and grain speed
+        # self.s = aeolis.transport.grainspeed(self.s, self.p)
         
         # calculate saturation time
         self.s = aeolis.transport.saturation_time(self.s, self.p)
@@ -290,8 +293,7 @@ class AeoLiS(IBmi):
         self.s = aeolis.bed.update(self.s, self.p)
         
         # calculate averages over time
-        if self.t % self.p['dz_interval'] == 0 :
-            self.s = aeolis.bed.time(self.s, self.p)
+        self.s = aeolis.bed.time(self.s, self.p)
         
         # grow vegetation
         self.s = aeolis.vegetation.germinate(self.s, self.p)

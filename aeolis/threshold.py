@@ -119,9 +119,8 @@ def compute_grainsize(s, p):
 
     s['uth'][:,:,:] = 1.
 
-    # s['uth'][:,:,:] = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size'] #AEOLIS
-    s['uth'][:, :, :] = 0.1 * np.sqrt( p['grain_size'] * p['g'] * (p['rhop'] / p['rhoa'] - 1)) # CDM
-
+    s['uth'][:,:,:] = p['A'] * np.sqrt((p['rhop'] - p['rhoa']) / p['rhoa'] * p['g'] * p['grain_size']) # AEOLIS
+    # s['uth'][:, :, :] = 0.1 * np.sqrt( p['grain_size'] * p['g'] * (p['rhop'] / p['rhoa'] - 1)) # CDM
     
 #    s['uth0'][:,:,:] = 1.
     s['uth0'] = s['uth'].copy()

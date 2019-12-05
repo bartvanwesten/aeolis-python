@@ -106,7 +106,6 @@ def grainspeed(s,p):
     
     uf = np.sqrt(4/(3*Cd)*(srho-1)*g*d)
 
-    
     # Grain velocity
     
     ets = np.zeros(s['uth'].shape)
@@ -127,29 +126,22 @@ def grainspeed(s,p):
     dzn = np.zeros(s['zb'].shape)
 
     # Efficient wind velocity (Duran, 2006 - Partelli, 2013)
+    ueff = (uth0 / kappa) * (np.log(z1 / z0))
+    ueff0 = (uth0 / kappa) * (np.log(z1 / z0)) #+ 2 * (np.sqrt(1 + z1 / zm * (ustar0 ** 2 / uth0 ** 2 - 1)) - 1))
 
-    # Efficient wind velocity (Duran, PhD)
-    # ueffs = (uth0 / kappa) * (np.log(z1 / z0) + z1 / zm * ((ustars / uth0) - 1))
-    # ueffn = (uth0 / kappa) * (np.log(z1 / z0) + z1 / zm * ((ustarn / uth0) - 1))
-    # ueff = np.hypot(ueffs, ueffn)
+    ix = (ustar >= uth)*(ustar > 0.)
+    ueff[ix] = (uth[ix] / kappa) * (np.log(z1 / z0) + 2*(np.sqrt(1+z1/zm[ix]*(ustar[ix]**2/uth[ix]**2-1))-1))
 
-    ix = (ustar >= uth)
-    ueff[ix] = (uth0[ix] / kappa) * (np.log(z1 / z0) + 2*(np.sqrt(1+z1/zm[ix]*(ustar[ix]**2/uth[ix]**2-1))-1))
-
-    # ix = (ustar <= uth)
-    # ueffs[ix] = 0.
-    # ueffn[ix] = 0.
-    #
-    # ueff = np.hypot(ueffs, ueffn)
+    # import matplotlib.pyplot as plt
+    # plt.pcolormesh(s['x'], s['y'], ueff[:, :, 0])  # , vmin=v_min, vmax=v_max)
+    # plt.colorbar()
+    # plt.show()
     
     #slopes
     
     z = s['zb'].copy()
     x = s['x']
     y = s['y']
-    
-#    ix = s['zsep'] > z
-#    z[ix] = s['zsep'][ix]
     
     dzs[:,1:-1] = (z[:,2:]-z[:,:-2])/(x[:,2:]-x[:,:-2])
     dzn[1:-1,:] = (z[:-2,:]-z[2:,:])/(y[:-2,:]-y[2:,:])
@@ -164,8 +156,9 @@ def grainspeed(s,p):
     dhn   = np.repeat(dzn[:,:,np.newaxis], nf, axis = 2)
     
     # Wind direction
-    
-    ix = ustar != 0.
+
+    ets[:] = 1.
+    etn[:] = 0.
 
     ets[ix] = ustars[ix] / ustar[ix]
     etn[ix] = ustarn[ix] / ustar[ix]
@@ -176,45 +169,22 @@ def grainspeed(s,p):
     
     # Compute grain speed
 
-    # for i in range(nf): #loop over fractions
-    #
-    #     s['uus'][ix] = (ueffs[ix]-uf/(np.sqrt(2*alfa)*Ax[ix]))*ets[ix]-(np.sqrt(2*alfa)*uf/Ax[ix])*dhs[ix]
-    #     s['uun'][ix] = (ueffn[ix]-uf/(np.sqrt(2*alfa)*Ax[ix]))*etn[ix]-(np.sqrt(2*alfa)*uf/Ax[ix])*dhn[ix]
-
-    # Flat bed TEMPORARY!
-
-    for i in range(nf): #loop over fractions
-
-        s['uu'][ix] = np.maximum((ueff[ix]-uf/(np.sqrt(2*alfa))), 0.)
-
-        s['uun'] = s['uu'] * etn
-        s['uus'] = s['uu'] * ets
-
-    # In separation bubble
-    ix = ustar == 0.
-
     for i in range(nf):  # loop over fractions
 
-        s['uus'][ix] = 0.
-        s['uun'][ix] = 0.
-
-    # s['uus0'] = (ueff0-uf/(np.sqrt(2*alfa)*Ax0))*ets0-(np.sqrt(2*alfa)*uf/Ax0)*dhs0
-    # s['uun0'] = (ueff0-uf/(np.sqrt(2*alfa)*Ax0))*etn0-(np.sqrt(2*alfa)*uf/Ax0)*dhn0
-
-    # ix = s['zsepdelta'] < 0.9
-    # s['uus'][ix,0] = s['uus0'][ix,0]
-    # s['uun'][ix,0] = s['uun0'][ix,0]
-
+        s['uus'] = (ueff - uf / (np.sqrt(2 * alfa) * Ax)) * ets - (np.sqrt(2 * alfa) * uf / Ax) * dhs
+        s['uun'] = (ueff - uf / (np.sqrt(2 * alfa) * Ax)) * etn - (np.sqrt(2 * alfa) * uf / Ax) * dhn
+        #
+        # s['uus'] = (ueff - uf / (np.sqrt(2 * alfa) * Ax)) * ets
+        # s['uun'] = (ueff - uf / (np.sqrt(2 * alfa) * Ax)) * etn
+    #
     s['uu'] = np.hypot(s['uus'], s['uun'])
-    s['uu0'] = np.hypot(s['uus0'], s['uun0'])
+    s['uu0'] = (ueff0 - uf / (np.sqrt(2 * alfa)))
 
-    # print('----------------------------------------')
-    # print(s['ustar'][100,100]/s['uth'][100,100,0])
-    # print(s['uu'][100,100,0])
-
-        #s['uus'][:,:,0] *= s['zsepdelta']
-        #s['uun'][:,:,0] *= s['zsepdelta']
-        #s['uu'][:,:,0] *= s['zsepdelta']
+    # import matplotlib.pyplot as plt
+    # plt.pcolormesh(s['x'], s['y'], s['uus'][:, :, 0])
+    # # plt.pcolormesh(s['x'], s['y'], (np.sqrt(2 * alfa) * uf / Ax[:,:,0]) * dhs[:,:,0])
+    # plt.colorbar()
+    # plt.show()
 
     return s
 
@@ -249,7 +219,7 @@ def equilibrium(s, p):
             if p['method_transport'].lower() == 'bagnold':
                 s['Cu'][ix, i] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
                                          * (s['ustar'][ix] - s['uth'][ix, i])**3 / s['uu'][ix, i])
-                s['Cu0'] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
+                s['Cu0'][:,:, i] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
                                          * (s['ustar0'] - s['uth0'][:,:,i])**3 / s['uu0'][:,:,i])
             elif p['method_transport'].lower() == 'kawamura':
                 s['Cu'][ix, i] = np.maximum(0., p['Cb'] * p['rhoa'] / p['g'] \
@@ -274,7 +244,7 @@ def equilibrium(s, p):
     Cu_max = 1.5
 
     s['Cu'] = np.minimum(Cu_max, s['Cu'])
-    #s['Cu'] *= 0.05 # TEMP!!!!!!!!
+    # s['Cu'] *= 0.05 # TEMP!!!!!!!!
 
 
     return s
